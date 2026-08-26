@@ -1,0 +1,52 @@
+# AI Assistant Context
+# This file tells AI assistants which files to ignore when providing context
+
+# Build output
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.cache
+
+# Package files
+*.nupkg
+packages/
+
+# IDE files
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userossccache
+*.sln.docstates
+
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Log files
+*.log
+logs/
+
+# Test results
+TestResult/
+*.trx
+*.coverage
+*.coveragexml
+
+# Generated files
+*.generated.cs
+*.g.cs
+
+# Temp files
+*.tmp
+*.temp
+~$*
