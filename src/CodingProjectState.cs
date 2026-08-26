@@ -1,4 +1,4 @@
-namespace AksAgenticWorkflowConsole;
+namespace AgenticWorkflowConsole;
 
 public class CodingProjectState
 {

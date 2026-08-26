@@ -1,7 +1,4 @@
-using System.Diagnostics;
-using System.Text;
-
-namespace AksAgenticWorkflowConsole;
+namespace AgenticWorkflowConsole;
 
 public class TerminalExecutionTool
 {

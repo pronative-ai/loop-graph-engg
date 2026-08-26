@@ -1,8 +1,4 @@
-using Azure;
-using Azure.AI.OpenAI;
-using Azure.Identity;
-
-namespace AksAgenticWorkflowConsole;
+namespace AgenticWorkflowConsole;
 
 public static class LlmConfiguration
 {

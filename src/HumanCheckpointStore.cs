@@ -1,6 +1,4 @@
-using System.Collections.Concurrent;
-
-namespace AksAgenticWorkflowConsole;
+namespace AgenticWorkflowConsole;
 
 public static class HumanCheckpointStore
 {

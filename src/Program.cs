@@ -1,9 +1,4 @@
-using Azure;
-using Azure.AI.OpenAI;
-using Azure.Identity;
-using DotNetEnv;
-
-namespace AksAgenticWorkflowConsole;
+namespace AgenticWorkflowConsole;
 
 internal static class Program
 {
