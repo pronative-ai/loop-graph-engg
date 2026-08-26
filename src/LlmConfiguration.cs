@@ -31,21 +31,18 @@ public static class LlmConfiguration
         return Environment.GetEnvironmentVariable("MODEL_NAME") ?? "gpt-4o";
     }
 
-    public static AzureOpenAIClient CreateClient()
+    public static IChatClient CreateChatClient(string? modelName = null)
     {
-        var gatewayUrl = LoadGatewayUrl();
+        var gatewayUrl = LoadGatewayUrl().TrimEnd('/');
         var gatewayKey = LoadGatewayKey();
+        var model = modelName ?? LoadModelName();
 
         var endpoint = new Uri(gatewayUrl);
-        var credential = new AzureKeyCredential(gatewayKey);
+        var credential = new ApiKeyCredential(gatewayKey);
 
-        return new AzureOpenAIClient(endpoint, credential);
-    }
+        var azureClient = new AzureOpenAIClient(endpoint, credential);
+        var chatClient = azureClient.GetChatClient(model);
 
-    public static OpenAI.Chat.ChatClient CreateChatClient(string? modelName = null)
-    {
-        var client = CreateClient();
-        var model = modelName ?? LoadModelName();
-        return client.GetChatClient(model);
+        return chatClient.AsIChatClient();
     }
 }

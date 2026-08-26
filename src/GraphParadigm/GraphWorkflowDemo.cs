@@ -2,67 +2,78 @@ namespace AgenticWorkflowConsole.GraphParadigm;
 
 public static class GraphWorkflowDemo
 {
-    public static async Task RunAsync()
+    public static async Task RunAsync(IChatClient? baseClient)
     {
         ConsoleLogger.GraphBorder("GRAPH ENGINEERING DEMO");
-        ConsoleLogger.Info("Demonstrating DAG workflow with specialized micro-agents");
+        ConsoleLogger.Info("Demonstrating DAG workflow with real ChatClientAgents");
         ConsoleLogger.Pause(1000);
 
-        await RunArchitectNode();
+        if (baseClient == null)
+        {
+            ConsoleLogger.SecurityWarning("No LLM client available - running in mock mode");
+            await RunMockAsync();
+            return;
+        }
+
+        var architect = new ChatClientAgent(
+            chatClient: baseClient,
+            instructions: """
+                You are a software architect. Given a request, produce a high-level system design
+                including architecture decisions and component breakdown.
+                Keep responses concise (under 200 words).
+                """,
+            name: "ArchitectAgent",
+            description: "Software architect that designs system architecture");
+
+        var coder = new ChatClientAgent(
+            chatClient: baseClient,
+            instructions: """
+                You are a software developer. Given a system design, produce the implementation plan
+                with specific classes, methods, and key logic.
+                Keep responses concise (under 200 words).
+                """,
+            name: "CoderAgent",
+            description: "Developer that implements system designs");
+
+        ConsoleLogger.Arrow("ArchitectAgent", "CoderAgent");
         ConsoleLogger.Pause(500);
+        ConsoleLogger.Info("Executing workflow...");
+        ConsoleLogger.BlankLine();
 
-        await RunCoderNode();
+        ConsoleLogger.Info("[ArchitectAgent] Running...");
+        await foreach (var update in architect.RunStreamingAsync(
+            "Design a REST API for a task management system with CRUD operations.",
+            session: null))
+        {
+            if (!string.IsNullOrWhiteSpace(update.Text))
+            {
+                ConsoleLogger.Info(update.Text);
+            }
+        }
+
         ConsoleLogger.Pause(500);
+        ConsoleLogger.BlankLine();
+        ConsoleLogger.Arrow("ArchitectAgent", "CoderAgent");
+        ConsoleLogger.BlankLine();
 
-        await RunParallelTests();
-        ConsoleLogger.Pause(500);
+        ConsoleLogger.Info("[CoderAgent] Running...");
+        await foreach (var update in coder.RunStreamingAsync(
+            "Implement the system design from the architect. Provide specific classes, controllers, services, and repositories with dependency injection.",
+            session: null))
+        {
+            if (!string.IsNullOrWhiteSpace(update.Text))
+            {
+                ConsoleLogger.Info(update.Text);
+            }
+        }
 
-        await RunDeploymentNode();
-
+        ConsoleLogger.BlankLine();
         ConsoleLogger.Success("Graph workflow completed successfully!");
         ConsoleLogger.Pause(500);
     }
 
-    private static async Task RunArchitectNode()
+    private static async Task RunMockAsync()
     {
-        ConsoleLogger.Info("[ArchitectNode] Analyzing requirements...");
-        ConsoleLogger.Pause(800);
-        ConsoleLogger.Info("[ArchitectNode] Generating system design...");
-        ConsoleLogger.Pause(600);
-        ConsoleLogger.Success("[ArchitectNode] Design complete - emitting to CoderNode");
-        ConsoleLogger.Arrow("ArchitectNode", "CoderNode");
-        await Task.CompletedTask;
-    }
-
-    private static async Task RunCoderNode()
-    {
-        ConsoleLogger.Info("[CoderNode] Receiving architecture spec...");
-        ConsoleLogger.Pause(800);
-        ConsoleLogger.Info("[CoderNode] Implementing components...");
-        ConsoleLogger.Pause(1000);
-        ConsoleLogger.Success("[CoderNode] Code complete - emitting to TestNodes");
-        ConsoleLogger.Arrow("CoderNode", "UnitTestNode");
-        ConsoleLogger.Arrow("CoderNode", "IntegrationTestNode");
-        await Task.CompletedTask;
-    }
-
-    private static async Task RunParallelTests()
-    {
-        ConsoleLogger.Info("Executing parallel test suites:");
-        ConsoleLogger.TreeBranch("", "UnitTestNode - Running unit tests...");
-        ConsoleLogger.Pause(600);
-        ConsoleLogger.TreeBranch("", "IntegrationTestNode - Running integration tests...", true);
-        ConsoleLogger.Pause(800);
-        ConsoleLogger.Success("All test suites passed!");
-        ConsoleLogger.Arrow("TestNodes", "DeploymentNode");
-        await Task.CompletedTask;
-    }
-
-    private static async Task RunDeploymentNode()
-    {
-        ConsoleLogger.Info("[DeploymentNode] Preparing deployment...");
-        ConsoleLogger.Pause(800);
-        ConsoleLogger.Success("[DeploymentNode] Deployment initiated!");
         await Task.CompletedTask;
     }
 }

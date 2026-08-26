@@ -7,11 +7,32 @@ namespace AgenticWorkflowConsole;
 
 internal static class Program
 {
+    private static IChatClient? s_chatClient;
+
     static async Task Main(string[] args)
     {
         ConsoleLogger.Info("=== Microsoft Agent Framework Demo ===");
         ConsoleLogger.Info("Loop Engineering vs Graph Engineering");
         ConsoleLogger.Pause(500);
+
+        try
+        {
+            Env.Load("../.env");
+            var gatewayUrl = LlmConfiguration.LoadGatewayUrl();
+            var modelName = LlmConfiguration.LoadModelName();
+            s_chatClient = LlmConfiguration.CreateChatClient();
+
+            ConsoleLogger.Success($"[GATEWAY] Connected to: {gatewayUrl}");
+            ConsoleLogger.Success($"[MODEL] Using: {modelName}");
+        }
+        catch (Exception ex)
+        {
+            ConsoleLogger.SecurityWarning($"Gateway init failed: {ex.Message}");
+            ConsoleLogger.Info("Continuing in demo mode without LLM connectivity.");
+            ConsoleLogger.BlankLine();
+            Console.Write("Press ENTER to continue...");
+            Console.ReadLine();
+        }
 
         while (true)
         {
@@ -31,13 +52,13 @@ internal static class Program
             switch (choice)
             {
                 case "1":
-                    await LoopAgentDemo.RunAsync();
+                    await LoopAgentDemo.RunAsync(s_chatClient);
                     break;
                 case "2":
-                    await GraphWorkflowDemo.RunAsync();
+                    await GraphWorkflowDemo.RunAsync(s_chatClient);
                     break;
                 case "3":
-                    await MiddlewareGuardrail.RunWithGuardrailAsync();
+                    await MiddlewareGuardrail.RunWithGuardrailAsync(s_chatClient);
                     break;
                 case "4":
                     await RunAllDemos();
@@ -54,10 +75,10 @@ internal static class Program
 
     private static async Task RunAllDemos()
     {
-        await LoopAgentDemo.RunAsync();
+        await LoopAgentDemo.RunAsync(s_chatClient);
         ConsoleLogger.BlankLine();
-        await GraphWorkflowDemo.RunAsync();
+        await GraphWorkflowDemo.RunAsync(s_chatClient);
         ConsoleLogger.BlankLine();
-        await MiddlewareGuardrail.RunWithGuardrailAsync();
+        await MiddlewareGuardrail.RunWithGuardrailAsync(s_chatClient);
     }
 }

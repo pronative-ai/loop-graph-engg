@@ -69,6 +69,11 @@ public static class ConsoleLogger
         Console.WriteLine();
     }
 
+    public static void WriteLine(string message)
+    {
+        Console.WriteLine(message);
+    }
+
     private static void WriteColor(string message, ConsoleColor color)
     {
         var prev = Console.ForegroundColor;
