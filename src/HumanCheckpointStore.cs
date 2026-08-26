@@ -3,57 +3,64 @@ namespace AgenticWorkflowConsole;
 public static class HumanCheckpointStore
 {
     private static readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _pendingApprovals = new();
+    private static readonly ConcurrentDictionary<string, bool> _history = new();
 
     public static Task TriggerApprovalPrompt(string sessionId)
     {
-        var tcs = new TaskCompletionSource<bool>();
-        _pendingApprovals[sessionId] = tcs;
-
-        Console.WriteLine($"[CHECKPOINT] Approval required for session: {sessionId}");
-        Console.WriteLine($"[CHECKPOINT] Use HumanCheckpointStore.Approve('{sessionId}') or Reject('{sessionId}') to proceed.");
-
+        _pendingApprovals.TryAdd(sessionId, new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously));
+        ConsoleLogger.Info($"[CHECKPOINT] Human approval initialized for session: {sessionId}");
         return Task.CompletedTask;
     }
 
     public static async Task<bool> WaitForApprovalAsync(string sessionId)
     {
-        if (_pendingApprovals.TryGetValue(sessionId, out var tcs))
+        if (_history.TryGetValue(sessionId, out var recordedResult))
         {
-            return await tcs.Task;
+            return recordedResult;
         }
 
-        Console.WriteLine($"[CHECKPOINT] No pending approval found for session: {sessionId}. Assuming approved.");
+        if (_pendingApprovals.TryGetValue(sessionId, out var tcs))
+        {
+            var result = await tcs.Task;
+            _history[sessionId] = result;
+            return result;
+        }
+
+        ConsoleLogger.Info($"[CHECKPOINT] No pending approval found for session: {sessionId}. Defaulting to true.");
         return true;
     }
 
     public static void Approve(string sessionId)
     {
+        _history[sessionId] = true;
         if (_pendingApprovals.TryRemove(sessionId, out var tcs))
         {
-            Console.WriteLine($"[CHECKPOINT] Approved session: {sessionId}");
-            tcs.SetResult(true);
+            ConsoleLogger.Success($"[CHECKPOINT] Operator APPROVED session: {sessionId}");
+            tcs.TrySetResult(true);
         }
         else
         {
-            Console.WriteLine($"[CHECKPOINT] No pending approval found for session: {sessionId}");
+            ConsoleLogger.Info($"[CHECKPOINT] Operator APPROVED session: {sessionId}");
         }
     }
 
     public static void Reject(string sessionId)
     {
+        _history[sessionId] = false;
         if (_pendingApprovals.TryRemove(sessionId, out var tcs))
         {
-            Console.WriteLine($"[CHECKPOINT] Rejected session: {sessionId}");
-            tcs.SetResult(false);
+            ConsoleLogger.SecurityWarning($"[CHECKPOINT] Operator REJECTED session: {sessionId}");
+            tcs.TrySetResult(false);
         }
         else
         {
-            Console.WriteLine($"[CHECKPOINT] No pending approval found for session: {sessionId}");
+            ConsoleLogger.SecurityWarning($"[CHECKPOINT] Operator REJECTED session: {sessionId}");
         }
     }
 
     public static void Clear()
     {
         _pendingApprovals.Clear();
+        _history.Clear();
     }
 }

@@ -33,9 +33,11 @@ public class AgenticWorkflow<TState>
     private readonly List<WorkflowEdge<TState>> _edges = new();
     private readonly List<WorkflowMiddleware<TState>> _middlewares = new();
     private readonly string _sessionId = Guid.NewGuid().ToString();
+    private string? _initialNodeName;
 
     public AgenticWorkflow<TState> AddInitialNode(string name, Func<TState, Task> execute)
     {
+        _initialNodeName = name;
         _nodes[name] = new WorkflowNode<TState>
         {
             Name = name,
@@ -103,6 +105,16 @@ public class AgenticWorkflow<TState>
         return this;
     }
 
+    public AgenticWorkflow<TState> AddEdge(string source, string target)
+    {
+        _edges.Add(new WorkflowEdge<TState>
+        {
+            Source = source,
+            Target = target
+        });
+        return this;
+    }
+
     public AgenticWorkflow<TState> UseMiddleware(Func<WorkflowContext<TState>, Func<Task>, Task> middleware)
     {
         _middlewares.Add(new WorkflowMiddleware<TState> { Execute = middleware });
@@ -112,9 +124,7 @@ public class AgenticWorkflow<TState>
     public async Task ExecuteAsync(TState initialState)
     {
         var state = initialState;
-        var currentNodeName = _edges.FirstOrDefault(e => e.IsParallel)?.Source ?? _nodes.Keys.First();
-        var visitedNodes = new HashSet<string>();
-        var pendingNodes = new ConcurrentBag<string>();
+        var currentNodeName = _initialNodeName ?? _nodes.Keys.FirstOrDefault();
 
         while (currentNodeName != null)
         {
@@ -137,14 +147,12 @@ public class AgenticWorkflow<TState>
                     await currentNode.ExecuteAsync(state);
                 }
 
-                Console.WriteLine($"[WORKFLOW] Executed node: {currentNodeName}");
+                ConsoleLogger.Info($"[WORKFLOW] Executed node: {currentNodeName}");
             });
-
-            visitedNodes.Add(currentNodeName);
 
             if (currentNode.IsTerminal)
             {
-                Console.WriteLine($"[WORKFLOW] Reached terminal node: {currentNodeName}. Workflow complete.");
+                ConsoleLogger.Success($"[WORKFLOW] Reached terminal node: {currentNodeName}. Workflow complete.");
                 break;
             }
 
@@ -152,23 +160,39 @@ public class AgenticWorkflow<TState>
 
             if (outgoingEdges.Count == 0)
             {
-                Console.WriteLine($"[WORKFLOW] No outgoing edges from node: {currentNodeName}. Workflow complete.");
+                ConsoleLogger.Info($"[WORKFLOW] No outgoing edges from node: {currentNodeName}. Workflow complete.");
                 break;
             }
 
             var parallelEdges = outgoingEdges.Where(e => e.IsParallel).ToList();
             if (parallelEdges.Count > 0)
             {
-                Console.WriteLine($"[WORKFLOW] Parallel split from {currentNodeName} to {string.Join(", ", parallelEdges.Select(e => e.Target))}");
+                ConsoleLogger.Info($"[WORKFLOW] Parallel split from {currentNodeName} to {string.Join(", ", parallelEdges.Select(e => e.Target))}");
                 
+                var targetCount = parallelEdges.Count;
+                var currentIdx = 0;
+
                 var parallelTasks = parallelEdges.Select(async edge =>
                 {
                     var parallelNodeName = edge.Target;
+                    var branchPrefix = (Interlocked.Increment(ref currentIdx) == targetCount) ? "└──" : "├──";
+                    ConsoleLogger.ParallelBranch(branchPrefix, $"Executing parallel node [{parallelNodeName}]");
+
                     if (_nodes.TryGetValue(parallelNodeName, out var parallelNode) && parallelNode.ExecuteAsync != null)
                     {
-                        await parallelNode.ExecuteAsync(state);
-                        Console.WriteLine($"[WORKFLOW] Completed parallel node: {parallelNodeName}");
-                        pendingNodes.Add(parallelNodeName);
+                        var parallelContext = new WorkflowContext<TState>
+                        {
+                            State = state,
+                            NextNode = parallelNodeName,
+                            SessionId = _sessionId
+                        };
+
+                        await ExecuteMiddlewarePipeline(parallelContext, async () =>
+                        {
+                            await parallelNode.ExecuteAsync(state);
+                        });
+
+                        ConsoleLogger.ParallelBranch(branchPrefix, $"Completed parallel node [{parallelNodeName}]");
                     }
                 });
 
@@ -181,11 +205,11 @@ public class AgenticWorkflow<TState>
                 if (joinEdges.Count > 0)
                 {
                     currentNodeName = joinEdges.First().Target;
-                    Console.WriteLine($"[WORKFLOW] Parallel join to: {currentNodeName}");
+                    ConsoleLogger.Info($"[WORKFLOW] Parallel join synchronized to: {currentNodeName}");
                 }
                 else
                 {
-                    Console.WriteLine($"[WORKFLOW] No join node found. Workflow complete.");
+                    ConsoleLogger.Info("[WORKFLOW] No join node found. Workflow complete.");
                     break;
                 }
             }
@@ -197,18 +221,26 @@ public class AgenticWorkflow<TState>
                     if (conditionalEdge.Condition(state))
                     {
                         currentNodeName = conditionalEdge.Target;
-                        Console.WriteLine($"[WORKFLOW] Conditional edge to: {currentNodeName}");
+                        ConsoleLogger.Arrow(currentNode.Name, currentNodeName);
                     }
                     else
                     {
-                        Console.WriteLine($"[WORKFLOW] Conditional edge condition not met. Workflow complete.");
+                        ConsoleLogger.Info("[WORKFLOW] Conditional edge condition not met. Workflow complete.");
                         break;
                     }
                 }
                 else
                 {
                     var nextEdge = outgoingEdges.FirstOrDefault(e => e.Condition == null);
-                    currentNodeName = nextEdge?.Target;
+                    if (nextEdge != null)
+                    {
+                        ConsoleLogger.Arrow(currentNode.Name, nextEdge.Target);
+                        currentNodeName = nextEdge.Target;
+                    }
+                    else
+                    {
+                        currentNodeName = null;
+                    }
                 }
             }
         }

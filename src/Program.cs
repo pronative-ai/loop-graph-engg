@@ -12,12 +12,12 @@ internal static class Program
     static async Task Main(string[] args)
     {
         ConsoleLogger.Info("=== Microsoft Agent Framework Demo ===");
-        ConsoleLogger.Info("Loop Engineering vs Graph Engineering");
+        ConsoleLogger.Info("Loop Engineering vs Graph Engineering (Real Orchestration)");
         ConsoleLogger.Pause(500);
 
         try
         {
-            Env.Load(Path.Combine(AppContext.BaseDirectory, ".env"));
+            Env.TraversePath().Load();
             var gatewayUrl = LlmConfiguration.LoadGatewayUrl();
             var modelName = LlmConfiguration.LoadModelName();
             s_chatClient = LlmConfiguration.CreateChatClient();
@@ -27,11 +27,9 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            ConsoleLogger.SecurityWarning($"Gateway init failed: {ex.Message}");
-            ConsoleLogger.Info("Continuing in demo mode without LLM connectivity.");
+            ConsoleLogger.SecurityWarning($"Gateway init note: {ex.Message}");
+            ConsoleLogger.Info("Continuing in direct execution mode.");
             ConsoleLogger.BlankLine();
-            Console.Write("Press ENTER to continue...");
-            Console.ReadLine();
         }
 
         while (true)

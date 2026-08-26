@@ -2,50 +2,56 @@ namespace AgenticWorkflowConsole.LoopParadigm;
 
 public static class LoopAgentDemo
 {
-    private static int s_compileAttempts;
-    private static int s_iteration;
+    private static int s_iteration = 1;
+    private static readonly TerminalExecutionTool s_terminalTool = new();
 
     public static async Task RunAsync(IChatClient? baseClient)
     {
         ConsoleLogger.LoopBorder("LOOP ENGINEERING DEMO");
-        ConsoleLogger.Info("Demonstrating autonomous iterative correction via ChatClientAgent");
+        ConsoleLogger.Info("Demonstrating autonomous iterative correction via ChatClientAgent with live build tools");
         ConsoleLogger.Pause(1000);
+
+        s_iteration = 1;
 
         if (baseClient == null)
         {
-            ConsoleLogger.SecurityWarning("No LLM client available - running in mock mode");
-            await RunMockAsync();
+            ConsoleLogger.SecurityWarning("No active LLM client configured. Running direct live build verification...");
+            await RunLiveBuildVerificationAsync();
             return;
         }
 
-        s_compileAttempts = 0;
-        s_iteration = 1;
-
-        var tool = AIFunctionFactory.Create(CompileProject, "CompileProject",
-            "Compiles the current .NET project and returns the build output. Errors indicate compilation failures.");
+        var compileTool = AIFunctionFactory.Create(
+            async (string? context) => await ExecuteLiveBuildCheckAsync(context),
+            "CompileProject",
+            "Compiles the current .NET solution/project using dotnet build and returns detailed diagnostic outputs.");
 
         var agent = new ChatClientAgent(
-                    chatClient: baseClient,
-                    instructions: """
-                You are a senior .NET developer. You must fix a compilation error in the project.
-
-                IMPORTANT: Call the CompileProject tool to check the build status. If it fails,
-                analyze the error and propose a specific code fix. Then call CompileProject again
-                to verify your fix. Continue until the build succeeds.
-
-                Keep your responses concise and focused on the compilation task.
+            chatClient: baseClient,
+            instructions: """
+                You are a senior .NET compiler engineer and autonomous loop agent.
+                Your task is to inspect the project build status using the CompileProject tool.
+                
+                Steps:
+                1. Call the CompileProject tool to run the live compiler.
+                2. Analyze the compiler output and diagnostics.
+                3. If the build succeeds, summarize the status cleanly and announce completion.
+                4. If any warnings or errors occur, explain the resolution strategy and verify again.
+                
+                Always be concise, precise, and professional.
                 """,
-                    name: "DevAgent",
-                    description: "A developer agent that fixes compilation errors",
-                    tools: [tool]);
+            name: "LoopDevAgent",
+            description: "An autonomous developer agent executing iterative build diagnostics and correction",
+            tools: [compileTool]);
 
-        ConsoleLogger.Info("[DevAgent] Starting autonomous loop...");
+        ConsoleLogger.Info("[LoopDevAgent] Starting autonomous correction loop with live tool invocation...");
         ConsoleLogger.BlankLine();
 
         try
         {
+            ConsoleLogger.LlmReasoning(s_iteration, "Initiating autonomous build verification cycle...");
+            
             await foreach (var update in agent.RunStreamingAsync(
-                "Fix the build. Run CompileProject to check the status.",
+                "Run the CompileProject tool now to verify the current codebase and provide an engineering assessment.",
                 session: null))
             {
                 if (!string.IsNullOrEmpty(update.Text))
@@ -55,68 +61,39 @@ public static class LoopAgentDemo
             }
 
             ConsoleLogger.BlankLine();
-            ConsoleLogger.Success("Loop converged - project compiled successfully!");
+            ConsoleLogger.BlankLine();
+            ConsoleLogger.Success("✓ Loop converged: Autonomous verification cycle completed successfully!");
         }
         catch (Exception ex)
         {
             ConsoleLogger.BlankLine();
-            ConsoleLogger.SecurityWarning($"LLM call failed: {ex.Message}");
-            ConsoleLogger.Info("Falling back to mock mode for demonstration...");
-            ConsoleLogger.Pause(500);
-            await RunMockAsync();
-            return;
-        }
-        ConsoleLogger.Pause(500);
-    }
-
-    private static async Task RunMockAsync()
-    {
-        var iterations = new[] { 1, 2 };
-
-        foreach (var iteration in iterations)
-        {
-            ConsoleLogger.LlmReasoning(iteration, "Analyzing project state...");
-            ConsoleLogger.Pause(800);
-
-            ConsoleLogger.ToolCall(iteration, "Invoking CompileProject tool...");
-            ConsoleLogger.Pause(600);
-
-            var result = CompileProject();
-            ConsoleLogger.Observation(iteration, $"Tool result: {result}");
-
-            if (result.StartsWith("Build succeeded"))
-            {
-                ConsoleLogger.Success("Loop converged - project compiled successfully!");
-                break;
-            }
-
-            ConsoleLogger.LlmReasoning(iteration, "Failure detected - initiating correction loop...");
-            ConsoleLogger.Pause(1000);
+            ConsoleLogger.SecurityWarning($"LLM invocation encountered an issue: {ex.Message}");
+            ConsoleLogger.Info("Executing direct live compiler verification fallback...");
+            await RunLiveBuildVerificationAsync();
         }
 
         ConsoleLogger.Pause(500);
-        await Task.CompletedTask;
     }
 
-    [Description("Compiles the current .NET project and returns the build output")]
-    private static string CompileProject()
+    private static async Task<string> ExecuteLiveBuildCheckAsync(string? context)
     {
-        s_compileAttempts++;
         ConsoleLogger.BlankLine();
-        ConsoleLogger.ToolCall(s_iteration, $"CompileProject attempt #{s_compileAttempts}");
-
-        string result;
-        if (s_compileAttempts == 1)
-        {
-            result = "ERROR: CS0246 - The type or namespace name 'MissingType' could not be found.";
-        }
-        else
-        {
-            result = "Build succeeded. 0 warnings, 0 errors.";
-        }
-
-        ConsoleLogger.Observation(s_iteration++, $"Tool result: {result}");
+        ConsoleLogger.ToolCall(s_iteration, $"Executing live tool [CompileProject] (Iteration #{s_iteration})...");
+        
+        var buildResult = await s_terminalTool.RunBuildVerificationAsync();
+        
+        ConsoleLogger.Observation(s_iteration++, $"Compiler Output received ({buildResult.Split('\n').Length} lines)");
         ConsoleLogger.BlankLine();
-        return result;
+
+        return buildResult;
+    }
+
+    private static async Task RunLiveBuildVerificationAsync()
+    {
+        ConsoleLogger.ToolCall(1, "Invoking live TerminalExecutionTool (dotnet build)...");
+        var result = await s_terminalTool.RunBuildVerificationAsync();
+        ConsoleLogger.Observation(1, result);
+        ConsoleLogger.BlankLine();
+        ConsoleLogger.Success("✓ Live build verification completed!");
     }
 }

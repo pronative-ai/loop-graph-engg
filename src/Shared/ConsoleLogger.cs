@@ -38,6 +38,11 @@ public static class ConsoleLogger
         WriteColor($"{prefix}{connector}{message}", ConsoleColor.DarkCyan);
     }
 
+    public static void ParallelBranch(string branchSymbol, string message)
+    {
+        WriteColor($"{branchSymbol} {message}", ConsoleColor.DarkCyan);
+    }
+
     public static void SecurityWarning(string message)
     {
         var prevBg = Console.BackgroundColor;

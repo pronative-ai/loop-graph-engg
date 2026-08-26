@@ -50,4 +50,17 @@ public static class LlmConfiguration
 
         return chatClient.AsIChatClient();
     }
+
+    public static async Task<bool> VerifyConnectivityAsync(IChatClient chatClient)
+    {
+        try
+        {
+            var response = await chatClient.GetResponseAsync("Ping");
+            return !string.IsNullOrWhiteSpace(response?.Text);
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

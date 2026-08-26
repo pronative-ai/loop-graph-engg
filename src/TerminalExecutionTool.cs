@@ -63,6 +63,26 @@ public class TerminalExecutionTool
         return result;
     }
 
+    public async Task<string> RunBuildVerificationAsync(string? targetPath = null)
+    {
+        var baseDir = targetPath ?? AppContext.BaseDirectory;
+        // Locate closest csproj or directory
+        var csproj = Directory.GetFiles(baseDir, "*.csproj", SearchOption.AllDirectories).FirstOrDefault()
+            ?? Directory.GetFiles(Directory.GetCurrentDirectory(), "*.csproj", SearchOption.AllDirectories).FirstOrDefault();
+
+        var command = csproj != null
+            ? $"dotnet build \"{csproj}\" --nologo -v q"
+            : "dotnet build --nologo -v q";
+
+        var result = await ExecuteAsync(command);
+        if (result.Success)
+        {
+            return $"Build Succeeded. All diagnostics clean (Exit code: 0).\n{result.Output}";
+        }
+
+        return $"Build Failed (Exit code: {result.ExitCode}).\nErrors:\n{result.Output}\n{result.Error}";
+    }
+
     private static string GetShellFileName()
     {
         if (OperatingSystem.IsWindows())
@@ -100,6 +120,6 @@ public class TerminalExecutionResult
     public bool Success { get; set; }
 
     public string Summary => Success
-        ? $"Command completed successfully (exit code: {ExitCode})"
-        : $"Command failed (exit code: {ExitCode}). Error: {Error}";
+        ? $"Command completed successfully (exit code: {ExitCode})\n{Output}"
+        : $"Command failed (exit code: {ExitCode}).\nError: {Error}\nOutput: {Output}";
 }

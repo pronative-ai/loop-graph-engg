@@ -5,146 +5,116 @@ public static class MiddlewareGuardrail
     public static async Task RunWithGuardrailAsync(IChatClient? baseClient)
     {
         ConsoleLogger.GraphBorder("GOVERNANCE MIDDLEWARE DEMO");
-        ConsoleLogger.Info("Demonstrating human-in-the-loop checkpoint with real LLM agent");
+        ConsoleLogger.Info("Demonstrating human-in-the-loop checkpoint integrated via AgenticWorkflow middleware");
         ConsoleLogger.Pause(1000);
 
-        if (baseClient == null)
+        var workflow = new AgenticWorkflow<CodingProjectState>();
+
+        // Register the Governance Interceptor Middleware
+        workflow.UseMiddleware(async (context, next) =>
         {
-            ConsoleLogger.SecurityWarning("No LLM client available - running in mock mode");
-            await RunMockAsync();
-            return;
+            if (string.Equals(context.NextNode, "DeploymentNode", StringComparison.OrdinalIgnoreCase))
+            {
+                ConsoleLogger.BlankLine();
+                ConsoleLogger.Info("[Middleware] Guardrail triggered: Intercepting transition to 'DeploymentNode'");
+                ConsoleLogger.SecurityWarning("CRITICAL: PRODUCTION DEPLOYMENT AUTHORIZATION REQUIRED");
+                ConsoleLogger.BlankLine();
+
+                await HumanCheckpointStore.TriggerApprovalPrompt(context.SessionId);
+
+                Console.Write("👉 Press ENTER to authorize deployment, or type 'deny' to reject: ");
+                var input = Console.ReadLine();
+
+                if (string.Equals(input?.Trim(), "deny", StringComparison.OrdinalIgnoreCase))
+                {
+                    HumanCheckpointStore.Reject(context.SessionId);
+                    ConsoleLogger.BlankLine();
+                    ConsoleLogger.SecurityWarning("Action Blocked: Deployment was DENIED by operator.");
+                    throw new UnauthorizedAccessException("Operator checkpoint denied transition to DeploymentNode.");
+                }
+
+                HumanCheckpointStore.Approve(context.SessionId);
+                ConsoleLogger.Success("[Middleware] Authorization confirmed: Resuming execution pipeline.");
+                ConsoleLogger.BlankLine();
+            }
+
+            await next();
+        });
+
+        ChatClientAgent? deploymentManager = null;
+        if (baseClient != null)
+        {
+            deploymentManager = new ChatClientAgent(
+                chatClient: baseClient,
+                instructions: """
+                    You are a release and deployment engineer.
+                    Summarize the deployment manifest and release verification steps (max 100 words).
+                    """,
+                name: "DeploymentManagerAgent",
+                description: "Manages build packaging and deployment verification");
         }
+
+        workflow.AddInitialNode("PrepareReleaseNode", async state =>
+        {
+            ConsoleLogger.Info("[PrepareReleaseNode] Generating release manifest and artifact bundle...");
+
+            if (deploymentManager != null)
+            {
+                var sb = new StringBuilder();
+                await foreach (var update in deploymentManager.RunStreamingAsync(
+                    "Prepare release summary for production deployment of the Task Manager Service.",
+                    session: null))
+                {
+                    if (!string.IsNullOrEmpty(update.Text))
+                    {
+                        ConsoleLogger.StreamToken(update.Text);
+                        sb.Append(update.Text);
+                    }
+                }
+                ConsoleLogger.BlankLine();
+                state.DeploymentLogs = sb.ToString();
+            }
+            else
+            {
+                state.DeploymentLogs = "Release manifest generated: Image tag v1.0.0, SHA256 verified.";
+                ConsoleLogger.Success("[PrepareReleaseNode] Staged release candidate v1.0.0");
+            }
+
+            ConsoleLogger.Pause(500);
+        });
+
+        workflow.AddEdge("PrepareReleaseNode", "DeploymentNode");
+
+        workflow.AddTerminalNode("DeploymentNode", state =>
+        {
+            ConsoleLogger.Info("[DeploymentNode] Executing zero-downtime deployment rollout...");
+            ConsoleLogger.Pause(500);
+            ConsoleLogger.Success("✓ [DeploymentNode] Production deployment completed successfully!");
+            return Task.CompletedTask;
+        });
+
+        var state = new CodingProjectState
+        {
+            Goal = "Deploy verified task management service to production"
+        };
 
         try
         {
-            await RunLlmAsync(baseClient);
+            await workflow.ExecuteAsync(state);
+            ConsoleLogger.BlankLine();
+            ConsoleLogger.Success("✓ Governance guardrail workflow execution finished successfully!");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            ConsoleLogger.BlankLine();
+            ConsoleLogger.SecurityWarning($"Workflow halted by security guardrail: {ex.Message}");
         }
         catch (Exception ex)
         {
-            ConsoleLogger.SecurityWarning($"LLM call failed: {ex.Message}");
-            ConsoleLogger.Info("Falling back to mock mode for demonstration...");
-            ConsoleLogger.Pause(500);
             ConsoleLogger.BlankLine();
-            await RunMockAsync();
-        }
-    }
-
-    private static async Task RunLlmAsync(IChatClient baseClient)
-    {
-        var agent = new ChatClientAgent(
-            chatClient: baseClient,
-            instructions: """
-                You are a deployment manager. When asked to prepare a deployment, provide a summary
-                of what will be deployed. When deployment is approved, confirm it. When denied,
-                acknowledge and suggest next steps.
-                Keep responses concise (under 100 words).
-                """,
-            name: "DeploymentManager",
-            description: "Manages deployment approvals and rollouts");
-
-        ConsoleLogger.Info("[Middleware] Active - intercepting deployment authorization");
-        ConsoleLogger.Pause(500);
-
-        ConsoleLogger.Info("[DeploymentManager] Preparing deployment plan...");
-        await foreach (var update in agent.RunStreamingAsync(
-            "Prepare a deployment plan for the task management API to production.",
-            session: null))
-        {
-            if (!string.IsNullOrEmpty(update.Text))
-            {
-                ConsoleLogger.StreamToken(update.Text);
-            }
+            ConsoleLogger.SecurityWarning($"Workflow encountered unexpected exception: {ex.Message}");
         }
 
-        ConsoleLogger.BlankLine();
-        ConsoleLogger.BlankLine();
-        ConsoleLogger.SecurityWarning("CRITICAL: DEPLOYMENT AUTHORIZATION REQUIRED");
-        ConsoleLogger.BlankLine();
-        Console.Write("👉 Press ENTER to authorize deployment, or type 'deny' to reject: ");
-        var input = Console.ReadLine();
-
-        if (string.Equals(input, "deny", StringComparison.OrdinalIgnoreCase))
-        {
-            ConsoleLogger.SecurityWarning("Deployment DENIED by operator");
-            ConsoleLogger.Pause(500);
-            ConsoleLogger.Info("[DeploymentManager] Acknowledging denial...");
-            await foreach (var denyUpdate in agent.RunStreamingAsync(
-                "Deployment was DENIED by the operator. Acknowledge and explain next steps.",
-                session: null))
-            {
-                if (!string.IsNullOrEmpty(denyUpdate.Text))
-                {
-                    ConsoleLogger.StreamToken(denyUpdate.Text);
-                }
-            }
-            ConsoleLogger.BlankLine();
-        }
-        else
-        {
-            ConsoleLogger.Success("[Middleware] Authorization granted - releasing deployment");
-            ConsoleLogger.Pause(500);
-            ConsoleLogger.Info("[DeploymentManager] Confirming deployment...");
-            await foreach (var approveUpdate in agent.RunStreamingAsync(
-                "Deployment has been APPROVED. Confirm the rollout and summarize what was deployed.",
-                session: null))
-            {
-                if (!string.IsNullOrEmpty(approveUpdate.Text))
-                {
-                    ConsoleLogger.StreamToken(approveUpdate.Text);
-                }
-            }
-            ConsoleLogger.BlankLine();
-        }
-
-        ConsoleLogger.BlankLine();
-        ConsoleLogger.Success("[Middleware] Guardrail checkpoint complete");
-    }
-
-    private static async Task RunMockAsync()
-    {
-        await RunArchitectNode();
         ConsoleLogger.Pause(500);
-        await RunCoderNode();
-        ConsoleLogger.Pause(500);
-        await InterceptDeployment();
-        ConsoleLogger.Success("Deployment authorized - proceeding with rollout!");
-        ConsoleLogger.Pause(500);
-    }
-
-    private static async Task RunArchitectNode()
-    {
-        ConsoleLogger.Info("[ArchitectNode] Analyzing requirements...");
-        ConsoleLogger.Pause(800);
-        ConsoleLogger.Success("[ArchitectNode] Design complete");
-        ConsoleLogger.Arrow("ArchitectNode", "CoderNode");
-        await Task.CompletedTask;
-    }
-
-    private static async Task RunCoderNode()
-    {
-        ConsoleLogger.Info("[CoderNode] Implementing code...");
-        ConsoleLogger.Pause(1000);
-        ConsoleLogger.Success("[CoderNode] Implementation complete");
-        ConsoleLogger.Arrow("CoderNode", "DeploymentNode");
-        await Task.CompletedTask;
-    }
-
-    private static async Task InterceptDeployment()
-    {
-        ConsoleLogger.Info("[Middleware] Intercepting deployment action...");
-        ConsoleLogger.Pause(500);
-        ConsoleLogger.SecurityWarning("CRITICAL: DEPLOYMENT AUTHORIZATION REQUIRED");
-        ConsoleLogger.BlankLine();
-        Console.Write("👉 Press ENTER to authorize deployment, or type 'deny' to reject: ");
-        var input = Console.ReadLine();
-
-        if (string.Equals(input, "deny", StringComparison.OrdinalIgnoreCase))
-        {
-            ConsoleLogger.SecurityWarning("Deployment DENIED by operator");
-            return;
-        }
-
-        ConsoleLogger.Success("[Middleware] Authorization received - releasing deployment");
-        await Task.CompletedTask;
     }
 }
