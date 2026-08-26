@@ -42,18 +42,30 @@ public static class LoopAgentDemo
         ConsoleLogger.Info("[DevAgent] Starting autonomous loop...");
         ConsoleLogger.BlankLine();
 
-        await foreach (var update in agent.RunStreamingAsync(
-            "Fix the build. Run CompileProject to check the status.",
-            session: null))
+        try
         {
-            if (!string.IsNullOrWhiteSpace(update.Text))
+            await foreach (var update in agent.RunStreamingAsync(
+                "Fix the build. Run CompileProject to check the status.",
+                session: null))
             {
-                ConsoleLogger.Info(update.Text);
+                if (!string.IsNullOrEmpty(update.Text))
+                {
+                    ConsoleLogger.StreamToken(update.Text);
+                }
             }
-        }
 
-        ConsoleLogger.BlankLine();
-        ConsoleLogger.Success("Loop converged - project compiled successfully!");
+            ConsoleLogger.BlankLine();
+            ConsoleLogger.Success("Loop converged - project compiled successfully!");
+        }
+        catch (Exception ex)
+        {
+            ConsoleLogger.BlankLine();
+            ConsoleLogger.SecurityWarning($"LLM call failed: {ex.Message}");
+            ConsoleLogger.Info("Falling back to mock mode for demonstration...");
+            ConsoleLogger.Pause(500);
+            await RunMockAsync();
+            return;
+        }
         ConsoleLogger.Pause(500);
     }
 
@@ -90,13 +102,21 @@ public static class LoopAgentDemo
     private static string CompileProject()
     {
         s_compileAttempts++;
-        ConsoleLogger.ToolCall(s_iteration++, $"CompileProject attempt #{s_compileAttempts}");
+        ConsoleLogger.BlankLine();
+        ConsoleLogger.ToolCall(s_iteration, $"CompileProject attempt #{s_compileAttempts}");
 
+        string result;
         if (s_compileAttempts == 1)
         {
-            return "ERROR: CS0246 - The type or namespace name 'MissingType' could not be found.";
+            result = "ERROR: CS0246 - The type or namespace name 'MissingType' could not be found.";
+        }
+        else
+        {
+            result = "Build succeeded. 0 warnings, 0 errors.";
         }
 
-        return "Build succeeded. 0 warnings, 0 errors.";
+        ConsoleLogger.Observation(s_iteration++, $"Tool result: {result}");
+        ConsoleLogger.BlankLine();
+        return result;
     }
 }

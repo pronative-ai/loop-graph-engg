@@ -15,6 +15,22 @@ public static class GraphWorkflowDemo
             return;
         }
 
+        try
+        {
+            await RunLlmAsync(baseClient);
+        }
+        catch (Exception ex)
+        {
+            ConsoleLogger.SecurityWarning($"LLM call failed: {ex.Message}");
+            ConsoleLogger.Info("Falling back to mock mode for demonstration...");
+            ConsoleLogger.Pause(500);
+            ConsoleLogger.BlankLine();
+            await RunMockAsync();
+        }
+    }
+
+    private static async Task RunLlmAsync(IChatClient baseClient)
+    {
         var architect = new ChatClientAgent(
             chatClient: baseClient,
             instructions: """
@@ -45,12 +61,13 @@ public static class GraphWorkflowDemo
             "Design a REST API for a task management system with CRUD operations.",
             session: null))
         {
-            if (!string.IsNullOrWhiteSpace(update.Text))
+            if (!string.IsNullOrEmpty(update.Text))
             {
-                ConsoleLogger.Info(update.Text);
+                ConsoleLogger.StreamToken(update.Text);
             }
         }
 
+        ConsoleLogger.BlankLine();
         ConsoleLogger.Pause(500);
         ConsoleLogger.BlankLine();
         ConsoleLogger.Arrow("ArchitectAgent", "CoderAgent");
@@ -61,9 +78,9 @@ public static class GraphWorkflowDemo
             "Implement the system design from the architect. Provide specific classes, controllers, services, and repositories with dependency injection.",
             session: null))
         {
-            if (!string.IsNullOrWhiteSpace(update.Text))
+            if (!string.IsNullOrEmpty(update.Text))
             {
-                ConsoleLogger.Info(update.Text);
+                ConsoleLogger.StreamToken(update.Text);
             }
         }
 
@@ -74,6 +91,42 @@ public static class GraphWorkflowDemo
 
     private static async Task RunMockAsync()
     {
+        await RunArchitectNode();
+        ConsoleLogger.Pause(500);
+        await RunCoderNode();
+        ConsoleLogger.Pause(500);
+        await RunDeploymentNode();
+        ConsoleLogger.Success("Graph workflow completed successfully!");
+        ConsoleLogger.Pause(500);
+    }
+
+    private static async Task RunArchitectNode()
+    {
+        ConsoleLogger.Info("[ArchitectNode] Analyzing requirements...");
+        ConsoleLogger.Pause(800);
+        ConsoleLogger.Info("[ArchitectNode] Generating system design...");
+        ConsoleLogger.Pause(600);
+        ConsoleLogger.Success("[ArchitectNode] Design complete - emitting to CoderNode");
+        ConsoleLogger.Arrow("ArchitectNode", "CoderNode");
+        await Task.CompletedTask;
+    }
+
+    private static async Task RunCoderNode()
+    {
+        ConsoleLogger.Info("[CoderNode] Receiving architecture spec...");
+        ConsoleLogger.Pause(800);
+        ConsoleLogger.Info("[CoderNode] Implementing components...");
+        ConsoleLogger.Pause(1000);
+        ConsoleLogger.Success("[CoderNode] Code complete");
+        ConsoleLogger.Arrow("CoderNode", "DeploymentNode");
+        await Task.CompletedTask;
+    }
+
+    private static async Task RunDeploymentNode()
+    {
+        ConsoleLogger.Info("[DeploymentNode] Preparing deployment...");
+        ConsoleLogger.Pause(800);
+        ConsoleLogger.Success("[DeploymentNode] Deployment initiated!");
         await Task.CompletedTask;
     }
 }

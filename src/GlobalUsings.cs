@@ -1,6 +1,7 @@
 global using Azure;
 global using Azure.AI.OpenAI;
 global using Azure.Identity;
+global using OpenAI;
 global using DotNetEnv;
 global using Microsoft.Agents.AI;
 global using Microsoft.Extensions.AI;

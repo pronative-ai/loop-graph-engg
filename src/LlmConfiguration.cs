@@ -37,11 +37,16 @@ public static class LlmConfiguration
         var gatewayKey = LoadGatewayKey();
         var model = modelName ?? LoadModelName();
 
-        var endpoint = new Uri(gatewayUrl);
-        var credential = new ApiKeyCredential(gatewayKey);
+        var endpointUrl = gatewayUrl.EndsWith(model, StringComparison.OrdinalIgnoreCase)
+            ? gatewayUrl
+            : $"{gatewayUrl}/{model}";
 
-        var azureClient = new AzureOpenAIClient(endpoint, credential);
-        var chatClient = azureClient.GetChatClient(model);
+        var endpoint = new Uri(endpointUrl);
+        var credential = new ApiKeyCredential(gatewayKey);
+        var clientOptions = new OpenAIClientOptions { Endpoint = endpoint };
+
+        var openAiClient = new OpenAIClient(credential, clientOptions);
+        var chatClient = openAiClient.GetChatClient(model);
 
         return chatClient.AsIChatClient();
     }

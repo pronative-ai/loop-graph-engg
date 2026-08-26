@@ -17,7 +17,7 @@ internal static class Program
 
         try
         {
-            Env.Load("../.env");
+            Env.Load(Path.Combine(AppContext.BaseDirectory, ".env"));
             var gatewayUrl = LlmConfiguration.LoadGatewayUrl();
             var modelName = LlmConfiguration.LoadModelName();
             s_chatClient = LlmConfiguration.CreateChatClient();

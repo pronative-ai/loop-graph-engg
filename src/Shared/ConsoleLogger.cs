@@ -54,6 +54,14 @@ public static class ConsoleLogger
         WriteColor(message, ConsoleColor.White);
     }
 
+    public static void StreamToken(string text, ConsoleColor color = ConsoleColor.White)
+    {
+        var prev = Console.ForegroundColor;
+        Console.ForegroundColor = color;
+        Console.Write(text);
+        Console.ForegroundColor = prev;
+    }
+
     public static void Success(string message)
     {
         WriteColor(message, ConsoleColor.Green);
