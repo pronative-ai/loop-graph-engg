@@ -2,6 +2,8 @@ global using Azure;
 global using Azure.AI.OpenAI;
 global using Azure.Identity;
 global using DotNetEnv;
+global using Microsoft.Extensions.AI;
 global using System.Collections.Concurrent;
 global using System.Diagnostics;
 global using System.Text;
+global using AgenticWorkflowConsole.Shared;
