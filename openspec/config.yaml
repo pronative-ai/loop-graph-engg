@@ -1,0 +1,37 @@
+schema: spec-driven
+
+context: |
+  Tech stack: .NET 10, C# 14
+  Project type: Console application
+  Framework: Microsoft Agent Framework (MAF)
+  Architecture: Loop Agent pattern with iterative task execution
+  Domain: AI agent orchestration using MAF primitives (Agent, AgentThread, AgentRuntime)
+  Conventions:
+    - C# 14 features (primary constructors, collection expressions, etc.)
+    - Clean architecture with separation of concerns
+    - Async/await patterns throughout
+    - Strong typing and nullable reference types enabled
+    - XML documentation on public API surfaces
+    - Unit tests with xUnit
+
+rules:
+  proposal:
+    - Always include a test-first approach: define unit tests before any source code implementation
+    - Include test coverage targets and test strategy in the proposal
+    - Define testable interfaces and contracts before implementation details
+  tasks:
+    - Write unit tests first for each task before implementing the source code
+    - Each task should have corresponding test cases defined upfront
+    - Ensure tests are runnable and pass before marking task as complete
+    - Break tasks into small, independently testable units
+
+operations:
+  apply:
+    guidance:
+      - Generate test files before implementation files
+      - Run `dotnet test` after applying each task to verify correctness
+      - Keep test summaries concise with clear assertion messages
+  archive:
+    guidance:
+      - Summarize the archive outcome before finishing
+      - Include test coverage results in the archive summary
