@@ -7,16 +7,16 @@ namespace AgenticWorkflowConsole;
 
 // Program is the console application entry point. It owns process-level setup
 // (loading the .env file and building the shared LLM chat client) and then
-// dispatches control to whichever demo paradigm the user selects: Loop, Graph,
-// or Governance. The heavy lifting lives in the demo classes themselves.
+// dispatches control to whichever walkthrough paradigm the user selects: Loop, Graph,
+// or Governance. The heavy lifting lives in the walkthrough classes themselves.
 internal static class Program
 {
-    // Shared across all demos so each reuses the same configured model/session.
+    // Shared across all walkthroughs so each reuses the same configured model/session.
     private static IChatClient? s_chatClient;
 
     static async Task Main(string[] args)
     {
-        ConsoleLogger.Info("=== Microsoft Agent Framework Demo ===");
+        ConsoleLogger.Info("=== Microsoft Agent Framework Walkthrough ===");
         ConsoleLogger.Info("Loop Engineering vs Graph Engineering (Real Orchestration)");
         ConsoleLogger.Pause(500);
 
@@ -41,16 +41,16 @@ internal static class Program
         }
 
         // HIGHLIGHT: The presentation start anchor. This interactive dispatch
-        // loop lets the audience pick the Live Loop, Graph, or Governance demo.
-        // Each demo illustrates a different agent-orchestration paradigm.
+        // loop lets the audience pick the Live Loop, Graph, or Governance walkthrough.
+        // Each walkthrough illustrates a different agent-orchestration paradigm.
         while (true)
         {
             ConsoleLogger.BlankLine();
-            ConsoleLogger.Info("Select a demo to run:");
-            ConsoleLogger.Info("  1. Loop Engineering Demo");
-            ConsoleLogger.Info("  2. Graph Engineering Demo");
-            ConsoleLogger.Info("  3. Governance Middleware Demo");
-            ConsoleLogger.Info("  4. Run All Demos");
+            ConsoleLogger.Info("Select a walkthrough to run:");
+            ConsoleLogger.Info("  1. Loop Engineering Walkthrough");
+            ConsoleLogger.Info("  2. Graph Engineering Walkthrough");
+            ConsoleLogger.Info("  3. Governance Middleware Walkthrough");
+            ConsoleLogger.Info("  4. Run All Walkthroughs");
             ConsoleLogger.Info("  5. Exit");
             ConsoleLogger.BlankLine();
             Console.Write("Enter your choice (1-5): ");
@@ -61,16 +61,16 @@ internal static class Program
             switch (choice)
             {
                 case "1":
-                    await LoopAgentDemo.RunAsync(s_chatClient);
+                    await LoopAgentWalkthrough.RunAsync(s_chatClient);
                     break;
                 case "2":
-                    await GraphWorkflowDemo.RunAsync(s_chatClient);
+                    await GraphWorkflowWalkthrough.RunAsync(s_chatClient);
                     break;
                 case "3":
                     await MiddlewareGuardrail.RunWithGuardrailAsync(s_chatClient);
                     break;
                 case "4":
-                    await RunAllDemos();
+                    await RunAllWalkthroughs();
                     break;
                 case "5":
                     ConsoleLogger.Success("Goodbye!");
@@ -82,11 +82,11 @@ internal static class Program
         }
     }
 
-    private static async Task RunAllDemos()
+    private static async Task RunAllWalkthroughs()
     {
-        await LoopAgentDemo.RunAsync(s_chatClient);
+        await LoopAgentWalkthrough.RunAsync(s_chatClient);
         ConsoleLogger.BlankLine();
-        await GraphWorkflowDemo.RunAsync(s_chatClient);
+        await GraphWorkflowWalkthrough.RunAsync(s_chatClient);
         ConsoleLogger.BlankLine();
         await MiddlewareGuardrail.RunWithGuardrailAsync(s_chatClient);
     }

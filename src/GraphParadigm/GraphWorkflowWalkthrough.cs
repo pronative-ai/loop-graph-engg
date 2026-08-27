@@ -5,11 +5,11 @@ namespace AgenticWorkflowConsole.GraphParadigm;
 // Backend/Frontend -> Reviewer -> Deployment. Unlike the Loop paradigm, there is no
 // iterative self-correction; instead, branch parallelism and a conditional edge gate
 // the flow. This class comments the node/edge wiring as the primary architecture visual.
-public static class GraphWorkflowDemo
+public static class GraphWorkflowWalkthrough
 {
     public static async Task RunAsync(IChatClient? baseClient)
     {
-        ConsoleLogger.GraphBorder("GRAPH ENGINEERING DEMO");
+        ConsoleLogger.GraphBorder("GRAPH ENGINEERING WALKTHROUGH");
         ConsoleLogger.Info("Demonstrating end-to-end DAG workflow with multi-agent orchestration");
         ConsoleLogger.Pause(1000);
 
@@ -247,7 +247,7 @@ public static class GraphWorkflowDemo
             return Task.CompletedTask;
         });
 
-        var state = new CodingProjectState { Goal = "Deterministic demo workflow" };
+        var state = new CodingProjectState { Goal = "Deterministic walkthrough workflow" };
         await workflow.ExecuteAsync(state);
     }
 }

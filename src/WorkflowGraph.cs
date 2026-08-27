@@ -1,10 +1,10 @@
 namespace AgenticWorkflowConsole;
 
-// AgenticWorkflow is a small hand-rolled graph engine that lets demos wire a DAG
+// AgenticWorkflow is a small hand-rolled graph engine that lets walkthroughs wire a DAG
 // of nodes (each with an async action), connect them with edges, and layer
 // middleware over every node execution. Node/edge definitions below are plain
 // data holders; AgenticWorkflow.ExecuteAsync is the traversal + routing engine.
-// The GraphParadigm and Governance demos build on these primitives.
+// The GraphParadigm and Governance walkthroughs build on these primitives.
 
 // A single unit of work in the graph. ExecuteAsync is the action run when the
 // node is reached; IsTerminal marks the node as an allowed stopping point.

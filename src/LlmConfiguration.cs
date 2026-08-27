@@ -1,7 +1,7 @@
 namespace AgenticWorkflowConsole;
 
 // Central factory that maps environment configuration (GATEWAY_URL, GATEWAY_KEY,
-// MODEL_NAME) onto the OpenAI-compatible client used by all demos. This is the
+// MODEL_NAME) onto the OpenAI-compatible client used by all walkthroughs. This is the
 // only place the Azure/OpenAI wiring is assembled, so callers just ask for an
 // IChatClient and never touch connection details.
 public static class LlmConfiguration
@@ -61,7 +61,7 @@ public static class LlmConfiguration
     }
 
     // Lightweight smoke test that round-trips a "Ping" through the live gateway
-    // so startup can log connectivity before any real demo runs.
+    // so startup can log connectivity before any real walkthrough runs.
     public static async Task<bool> VerifyConnectivityAsync(IChatClient chatClient)
     {
         try

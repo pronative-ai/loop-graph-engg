@@ -1,6 +1,6 @@
 namespace AgenticWorkflowConsole.Governance;
 
-// Governance demo entry point: shows how to inject a human-authorization gate
+// Governance walkthrough entry point: shows how to inject a human-authorization gate
 // (guardrail) into the AgenticWorkflow pipeline using its middleware hook.
 // While normal graph execution flows node-to-node transparently, this middleware
 // intercepts the transition to DeploymentNode and requires an operator to
@@ -9,7 +9,7 @@ public static class MiddlewareGuardrail
 {
     public static async Task RunWithGuardrailAsync(IChatClient? baseClient)
     {
-        ConsoleLogger.GraphBorder("GOVERNANCE MIDDLEWARE DEMO");
+        ConsoleLogger.GraphBorder("GOVERNANCE MIDDLEWARE WALKTHROUGH");
         ConsoleLogger.Info("Demonstrating human-in-the-loop checkpoint integrated via AgenticWorkflow middleware");
         ConsoleLogger.Pause(1000);
 

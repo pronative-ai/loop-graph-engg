@@ -4,14 +4,14 @@ namespace AgenticWorkflowConsole.LoopParadigm;
 // problem (build + fix + re-verify) under its own direction until it converges.
 // The "loop" is the agent repeatedly invoking the live build tool and reacting to
 // the result - a compact contrast to the Graph paradigm's DAG of specialized nodes.
-public static class LoopAgentDemo
+public static class LoopAgentWalkthrough
 {
     private static int s_iteration = 1;
     private static readonly TerminalExecutionTool s_terminalTool = new();
 
     public static async Task RunAsync(IChatClient? baseClient)
     {
-        ConsoleLogger.LoopBorder("LOOP ENGINEERING DEMO");
+        ConsoleLogger.LoopBorder("LOOP ENGINEERING WALKTHROUGH");
         ConsoleLogger.Info("Demonstrating autonomous iterative correction via ChatClientAgent with live build tools");
         ConsoleLogger.Pause(1000);
 

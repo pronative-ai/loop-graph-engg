@@ -1,9 +1,9 @@
 namespace AgenticWorkflowConsole;
 
-// A thin wrapper around a real subprocess call. It lets an agent (or demo) run an
+// A thin wrapper around a real subprocess call. It lets an agent (or walkthrough) run an
 // external command - e.g. `dotnet build` - capture stdout/stderr and the exit
 // code without spawning a visible console window. This is the "live external tool"
-// used by the Loop demo to observe the real compiler state and by RunBuildVerificationAsync.
+// used by the Loop walkthrough to observe the real compiler state and by RunBuildVerificationAsync.
 public class TerminalExecutionTool
 {
     // HIGHLIGHT: The external tool-invocation method. Runs a shell command as a

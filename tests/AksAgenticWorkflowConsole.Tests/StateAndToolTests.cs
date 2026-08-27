@@ -10,7 +10,7 @@ public class StateAndToolTests
     {
         var state = new CodingProjectState
         {
-            Goal = "Build demo",
+            Goal = "Build walkthrough",
             TasksCreated = true,
             ArchitectureSpec = "Spec v1",
             BackendCode = "public class C {}",
@@ -22,7 +22,7 @@ public class StateAndToolTests
 
         state.Metadata["env"] = "staging";
 
-        Assert.Equal("Build demo", state.Goal);
+        Assert.Equal("Build walkthrough", state.Goal);
         Assert.True(state.TasksCreated);
         Assert.True(state.IsApproved);
         Assert.Equal("staging", state.Metadata["env"]);
