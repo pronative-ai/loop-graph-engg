@@ -4,8 +4,8 @@ context: |
   Tech stack: .NET 10, C# 14
   Project type: Console application
   Framework: Microsoft Agent Framework (MAF)
-  Architecture: Loop Agent pattern with iterative task execution
-  Domain: AI agent orchestration using MAF primitives (Agent, AgentThread, AgentRuntime)
+  Architecture: Loop vs Graph Agentic Workflow Walkthroughs (Autonomous Iterative Loop, Workflow DAG Multi-Agent Routing, Governance Middleware)
+  Domain: AI agent orchestration using MAF primitives (ChatClientAgent, AIFunctionFactory, Workflow, Middleware)
   Conventions:
     - C# 14 features (primary constructors, collection expressions, etc.)
     - Clean architecture with separation of concerns
@@ -13,12 +13,9 @@ context: |
     - Strong typing and nullable reference types enabled
     - XML documentation on public API surfaces
     - Unit tests with xUnit
+    - Live IChatClient evaluation with zero offline fallback strings
 
 rules:
-  proposal:
-    - Always include a test-first approach: define unit tests before any source code implementation
-    - Include test coverage targets and test strategy in the proposal
-    - Define testable interfaces and contracts before implementation details
   tasks:
     - Write unit tests first for each task before implementing the source code
     - Each task should have corresponding test cases defined upfront
@@ -29,7 +26,7 @@ operations:
   apply:
     guidance:
       - Generate test files before implementation files
-      - Run `dotnet test` after applying each task to verify correctness
+      - Run `dotnet test tests/AksAgenticWorkflowConsole.Tests/AksAgenticWorkflowConsole.Tests.csproj` after applying each task to verify correctness
       - Keep test summaries concise with clear assertion messages
   archive:
     guidance:
