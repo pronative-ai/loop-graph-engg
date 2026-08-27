@@ -20,7 +20,7 @@ The system SHALL target .NET 10.0 and reference official Microsoft Agent Framewo
 
 ### Requirement: Program entry point
 
-The system SHALL provide a main entry point that orchestrates demo execution.
+The system SHALL provide a main entry point that orchestrates walkthrough execution.
 
 #### Scenario: Demo initialization
 
@@ -30,18 +30,19 @@ The system SHALL provide a main entry point that orchestrates demo execution.
 #### Scenario: User selection
 
 - **WHEN** the application starts
-- **THEN** the user can choose to run Loop, Graph, or both demos
+- **THEN** the user can choose to run Loop, Graph, Governance, or all walkthroughs
 
 ### Requirement: Loop paradigm demonstration
 
-The system SHALL demonstrate an AIAgent executing an internal autonomous loop with live tool execution and dynamic error diagnosis.
+The system SHALL demonstrate an AIAgent executing an internal autonomous loop with live tool execution and dynamic error diagnosis in an interactive walkthrough.
 
 #### Scenario: Iterative correction loop
 
-- **WHEN** the LoopAgentDemo runs with an active LLM client
+- **WHEN** the LoopAgentWalkthrough runs with an active LLM client
 - **THEN** an `AIAgent` executes via `agent.RunStreamingAsync()` with a registered live `CompileProject` tool that executes verification and converges upon successful compilation
 
 #### Scenario: Live tool execution
+
 - **WHEN** the agent calls the compilation tool
 - **THEN** the system executes the build verification tool and provides the exact compiler/diagnostic output back to the agent
 
@@ -57,11 +58,11 @@ The system SHALL demonstrate an AIAgent executing an internal autonomous loop wi
 
 ### Requirement: Graph paradigm demonstration
 
-The system SHALL demonstrate a Workflow graph executing an end-to-end directed acyclic graph with isolated nodes representing specialized coding micro-agents.
+The system SHALL demonstrate a Workflow graph executing an end-to-end directed acyclic graph with isolated nodes representing specialized coding micro-agents in an interactive walkthrough.
 
 #### Scenario: DAG workflow execution
 
-- **WHEN** the GraphWorkflowDemo runs with an active LLM client
+- **WHEN** the GraphWorkflowWalkthrough runs with an active LLM client
 - **THEN** it executes an `AgenticWorkflow<CodingProjectState>` directed acyclic graph passing state between ArchitectAgent, CoderAgent, and ReviewerAgent nodes
 
 #### Scenario: Visual node routing
@@ -80,12 +81,13 @@ The system SHALL demonstrate a Workflow graph executing an end-to-end directed a
 - **THEN** they render using structural tree branch lines `├──` and `└──` in DarkCyan
 
 #### Scenario: State propagation across nodes
+
 - **WHEN** an upstream agent finishes producing architectural specifications
 - **THEN** downstream coder nodes receive the generated specifications directly in their execution context
 
 ### Requirement: Governance middleware guardrail
 
-The system SHALL demonstrate human-in-the-loop checkpoint via middleware interceptor.
+The system SHALL demonstrate human-in-the-loop checkpoint via middleware interceptor in an interactive walkthrough.
 
 #### Scenario: Deployment interception
 
@@ -108,6 +110,7 @@ The system SHALL demonstrate human-in-the-loop checkpoint via middleware interce
 - **THEN** the workflow continues to the deployment node
 
 #### Scenario: Real workflow middleware pipeline
+
 - **WHEN** the workflow runs with guardrail middleware
 - **THEN** the middleware intercepts the actual workflow context transition before executing the terminal node
 

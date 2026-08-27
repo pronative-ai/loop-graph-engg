@@ -16,9 +16,14 @@ internal static class Program
 
     static async Task Main(string[] args)
     {
-        ConsoleLogger.Info("=== Microsoft Agent Framework Walkthrough ===");
-        ConsoleLogger.Info("Loop Engineering vs Graph Engineering (Real Orchestration)");
-        ConsoleLogger.Pause(500);
+
+        ConsoleLogger.Info("=======================================================================");
+        ConsoleLogger.Info("|                   pronative.ai                                      |");
+        ConsoleLogger.Info("=======================================================================");
+
+        ConsoleLogger.Info("=== Loop Engineering vs Graph Engineering (Orchestration) ===");
+        ConsoleLogger.Info("Initializing environment ...");
+        ConsoleLogger.Pause(2000);
 
         // Gateway setup is best-effort: if the .env or credentials are missing,
         // we log a warning and keep going in deterministic (offline) mode.
@@ -49,11 +54,11 @@ internal static class Program
             ConsoleLogger.Info("Select a walkthrough to run:");
             ConsoleLogger.Info("  1. Loop Engineering Walkthrough");
             ConsoleLogger.Info("  2. Graph Engineering Walkthrough");
-            ConsoleLogger.Info("  3. Governance Middleware Walkthrough");
-            ConsoleLogger.Info("  4. Run All Walkthroughs");
-            ConsoleLogger.Info("  5. Exit");
+            // ConsoleLogger.Info("  3. Governance Middleware Walkthrough");
+            // ConsoleLogger.Info("  4. Run All Walkthroughs");
+            ConsoleLogger.Info("  3. Exit");
             ConsoleLogger.BlankLine();
-            Console.Write("Enter your choice (1-5): ");
+            Console.Write("Enter your choice (1-3): ");
 
             var choice = Console.ReadLine();
             ConsoleLogger.BlankLine();
@@ -66,13 +71,13 @@ internal static class Program
                 case "2":
                     await GraphWorkflowWalkthrough.RunAsync(s_chatClient);
                     break;
+                // case "3":
+                //     await MiddlewareGuardrail.RunWithGuardrailAsync(s_chatClient);
+                //     break;
+                // case "4":
+                //     await RunAllWalkthroughs();
+                //     break;
                 case "3":
-                    await MiddlewareGuardrail.RunWithGuardrailAsync(s_chatClient);
-                    break;
-                case "4":
-                    await RunAllWalkthroughs();
-                    break;
-                case "5":
                     ConsoleLogger.Success("Goodbye!");
                     return;
                 default:
