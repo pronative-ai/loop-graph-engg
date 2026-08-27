@@ -6,7 +6,7 @@ Orchestrate multi-agent workflows using Microsoft Agent Framework (MAF) with age
 
 ### Requirement: Workflow state management
 
-The system SHALL maintain a `CodingProjectState` object that tracks workflow progress, tasks, and approval status.
+The system SHALL maintain a `CodingProjectState` object that tracks workflow progress, tasks, agent outputs, and approval status.
 
 #### Scenario: Initialize workflow state
 
@@ -22,6 +22,10 @@ The system SHALL maintain a `CodingProjectState` object that tracks workflow pro
 
 - **WHEN** the Reviewer node completes evaluation
 - **THEN** the system sets `IsApproved` to true or false based on code quality checks
+
+#### Scenario: Store intermediate agent outputs
+- **WHEN** each agent node completes execution
+- **THEN** the generated code, architecture, or review is stored in `CodingProjectState` for subsequent nodes to consume
 
 ### Requirement: Agent node definition
 
@@ -44,7 +48,7 @@ The system SHALL support defining AI agent nodes with custom instructions, names
 
 ### Requirement: Agentic graph orchestration
 
-The system SHALL orchestrate workflow execution using a directed graph with nodes, edges, and transition rules.
+The system SHALL orchestrate workflow execution using a directed graph with nodes, edges, middleware pipelines, and transition rules.
 
 #### Scenario: Linear node execution
 

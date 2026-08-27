@@ -1,3 +1,7 @@
+// Project-wide using consolidation: all demos and helpers share these imports so
+// individual files stay clean and focused. New source files in this project should
+// avoid re-declaring these and instead rely on this global set.
+
 global using Azure;
 global using Azure.AI.OpenAI;
 global using Azure.Identity;

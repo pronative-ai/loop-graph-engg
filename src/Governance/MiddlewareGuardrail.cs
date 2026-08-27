@@ -1,5 +1,10 @@
 namespace AgenticWorkflowConsole.Governance;
 
+// Governance demo entry point: shows how to inject a human-authorization gate
+// (guardrail) into the AgenticWorkflow pipeline using its middleware hook.
+// While normal graph execution flows node-to-node transparently, this middleware
+// intercepts the transition to DeploymentNode and requires an operator to
+// explicitly approve (or deny) before the pipeline may continue.
 public static class MiddlewareGuardrail
 {
     public static async Task RunWithGuardrailAsync(IChatClient? baseClient)
@@ -10,11 +15,19 @@ public static class MiddlewareGuardrail
 
         var workflow = new AgenticWorkflow<CodingProjectState>();
 
-        // Register the Governance Interceptor Middleware
+        // Register the Governance Interceptor Middleware: this is the key guardrail.
+        // It wraps every node hop, but only pauses execution when the target is the
+        // deployment node - so ordinary nodes run through unobstructed while the most
+        // dangerous transition gets a human checkpoint.
         workflow.UseMiddleware(async (context, next) =>
         {
             if (string.Equals(context.NextNode, "DeploymentNode", StringComparison.OrdinalIgnoreCase))
             {
+                // HIGHLIGHT: The human-checkpoint gate for production deployment.
+                // Middleware intercepts the transition, prompts the operator for
+                // approval, and either allows the pipeline to proceed (pass) or
+                // throws to halt the workflow (fail). This is the pass/fail path
+                // to walk through live: show that "deny" blocks deployment.
                 ConsoleLogger.BlankLine();
                 ConsoleLogger.Info("[Middleware] Guardrail triggered: Intercepting transition to 'DeploymentNode'");
                 ConsoleLogger.SecurityWarning("CRITICAL: PRODUCTION DEPLOYMENT AUTHORIZATION REQUIRED");

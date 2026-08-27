@@ -1,7 +1,14 @@
 namespace AgenticWorkflowConsole;
 
+// A thin wrapper around a real subprocess call. It lets an agent (or demo) run an
+// external command - e.g. `dotnet build` - capture stdout/stderr and the exit
+// code without spawning a visible console window. This is the "live external tool"
+// used by the Loop demo to observe the real compiler state and by RunBuildVerificationAsync.
 public class TerminalExecutionTool
 {
+    // HIGHLIGHT: The external tool-invocation method. Runs a shell command as a
+    // child process, asynchronously collecting its output and exit code so the
+    // caller can react to what actually happened on the machine.
     public async Task<TerminalExecutionResult> ExecuteAsync(
         string command,
         string? workingDirectory = null)
@@ -10,6 +17,8 @@ public class TerminalExecutionTool
         
         try
         {
+            // Build a shell process that runs the command with output redirected
+            // (no window, no interactive shell) so we can capture the results.
             var processStartInfo = new ProcessStartInfo
             {
                 FileName = GetShellFileName(),
@@ -23,6 +32,8 @@ public class TerminalExecutionTool
 
             using var process = new Process { StartInfo = processStartInfo };
             
+            // Accumulate stdout/stderr incrementally as the process streams them,
+            // so long-running builds don't buffer until completion.
             var outputBuilder = new StringBuilder();
             var errorBuilder = new StringBuilder();
 
@@ -46,8 +57,10 @@ public class TerminalExecutionTool
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
+            // Wait asynchronously (no thread-blocking) for the process to finish.
             await process.WaitForExitAsync();
 
+            // Summarize the run for the caller from exit code + captured streams.
             result.Output = outputBuilder.ToString().Trim();
             result.Error = errorBuilder.ToString().Trim();
             result.ExitCode = process.ExitCode;
@@ -55,6 +68,8 @@ public class TerminalExecutionTool
         }
         catch (Exception ex)
         {
+            // Any spawn/runtime failure is reported as a failed result rather than
+            // thrown, so callers always get a well-formed TerminalExecutionResult.
             result.Error = $"Failed to execute command: {ex.Message}";
             result.Success = false;
             result.ExitCode = -1;
@@ -63,6 +78,8 @@ public class TerminalExecutionTool
         return result;
     }
 
+    // High-level helper: locates the nearest .csproj and runs `dotnet build`,
+    // producing a human-readable pass/fail summary for the agent to consume.
     public async Task<string> RunBuildVerificationAsync(string? targetPath = null)
     {
         var baseDir = targetPath ?? AppContext.BaseDirectory;
@@ -83,6 +100,7 @@ public class TerminalExecutionTool
         return $"Build Failed (Exit code: {result.ExitCode}).\nErrors:\n{result.Output}\n{result.Error}";
     }
 
+    // Pick the correct shell for the current OS (cmd on Windows, bash elsewhere).
     private static string GetShellFileName()
     {
         if (OperatingSystem.IsWindows())
@@ -99,6 +117,7 @@ public class TerminalExecutionTool
         }
     }
 
+    // Format the command for the target shell: `/c` on cmd, `-c` on POSIX shells.
     private static string GetShellArguments(string command)
     {
         if (OperatingSystem.IsWindows())
@@ -112,6 +131,8 @@ public class TerminalExecutionTool
     }
 }
 
+// Immutable-ish result object summarizing a completed command execution. Summary is
+// a single ready-to-log string derived from the captured output/error/exit code.
 public class TerminalExecutionResult
 {
     public string Output { get; set; } = string.Empty;

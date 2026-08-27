@@ -34,12 +34,16 @@ The system SHALL provide a main entry point that orchestrates demo execution.
 
 ### Requirement: Loop paradigm demonstration
 
-The system SHALL demonstrate an AIAgent executing an internal autonomous loop.
+The system SHALL demonstrate an AIAgent executing an internal autonomous loop with live tool execution and dynamic error diagnosis.
 
 #### Scenario: Iterative correction loop
 
-- **WHEN** the LoopAgentDemo runs
-- **THEN** an `AIAgent` executes via `agent.RunAsync()` with a registered `CompileProject` tool that fails on first run and succeeds on second
+- **WHEN** the LoopAgentDemo runs with an active LLM client
+- **THEN** an `AIAgent` executes via `agent.RunStreamingAsync()` with a registered live `CompileProject` tool that executes verification and converges upon successful compilation
+
+#### Scenario: Live tool execution
+- **WHEN** the agent calls the compilation tool
+- **THEN** the system executes the build verification tool and provides the exact compiler/diagnostic output back to the agent
 
 #### Scenario: Loop visual output
 
@@ -53,12 +57,12 @@ The system SHALL demonstrate an AIAgent executing an internal autonomous loop.
 
 ### Requirement: Graph paradigm demonstration
 
-The system SHALL demonstrate a Workflow graph with isolated nodes representing specialized coding micro-agents.
+The system SHALL demonstrate a Workflow graph executing an end-to-end directed acyclic graph with isolated nodes representing specialized coding micro-agents.
 
 #### Scenario: DAG workflow execution
 
-- **WHEN** the GraphWorkflowDemo runs
-- **THEN** it executes a directed acyclic graph with ArchitectAgent and CoderAgent nodes
+- **WHEN** the GraphWorkflowDemo runs with an active LLM client
+- **THEN** it executes an `AgenticWorkflow<CodingProjectState>` directed acyclic graph passing state between ArchitectAgent, CoderAgent, and ReviewerAgent nodes
 
 #### Scenario: Visual node routing
 
@@ -74,6 +78,10 @@ The system SHALL demonstrate a Workflow graph with isolated nodes representing s
 
 - **WHEN** parallel tasks execute
 - **THEN** they render using structural tree branch lines `├──` and `└──` in DarkCyan
+
+#### Scenario: State propagation across nodes
+- **WHEN** an upstream agent finishes producing architectural specifications
+- **THEN** downstream coder nodes receive the generated specifications directly in their execution context
 
 ### Requirement: Governance middleware guardrail
 
@@ -98,6 +106,10 @@ The system SHALL demonstrate human-in-the-loop checkpoint via middleware interce
 
 - **WHEN** the user provides authorization
 - **THEN** the workflow continues to the deployment node
+
+#### Scenario: Real workflow middleware pipeline
+- **WHEN** the workflow runs with guardrail middleware
+- **THEN** the middleware intercepts the actual workflow context transition before executing the terminal node
 
 ### Requirement: Centralized console logging
 

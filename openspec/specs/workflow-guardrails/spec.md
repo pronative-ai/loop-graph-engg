@@ -6,7 +6,7 @@ Implement middleware guardrails for workflow execution with human checkpoint ver
 
 ### Requirement: Deployment checkpoint verification
 
-The system SHALL require human approval before proceeding to deployment operations.
+The system SHALL require human approval through the middleware pipeline before proceeding to deployment operations.
 
 #### Scenario: Block deployment without approval
 
@@ -22,6 +22,10 @@ The system SHALL require human approval before proceeding to deployment operatio
 
 - **WHEN** a human rejects the deployment checkpoint
 - **THEN** the system throws an `UnauthorizedAccessException` with rejection message
+
+#### Scenario: Real-time operator interaction
+- **WHEN** the checkpoint triggers in console mode
+- **THEN** the operator is prompted interactively to authorize or deny the deployment before any deployment action runs
 
 ### Requirement: Middleware interception
 

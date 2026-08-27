@@ -1,5 +1,13 @@
 namespace AgenticWorkflowConsole;
 
+// AgenticWorkflow is a small hand-rolled graph engine that lets demos wire a DAG
+// of nodes (each with an async action), connect them with edges, and layer
+// middleware over every node execution. Node/edge definitions below are plain
+// data holders; AgenticWorkflow.ExecuteAsync is the traversal + routing engine.
+// The GraphParadigm and Governance demos build on these primitives.
+
+// A single unit of work in the graph. ExecuteAsync is the action run when the
+// node is reached; IsTerminal marks the node as an allowed stopping point.
 public class WorkflowNode<TState>
 {
     public string Name { get; set; } = string.Empty;
@@ -7,6 +15,8 @@ public class WorkflowNode<TState>
     public bool IsTerminal { get; set; }
 }
 
+// Connects two nodes. IsParallel marks edges that fan out into concurrent branches;
+// Condition supports data-driven (approval-gate) routing between two nodes.
 public class WorkflowEdge<TState>
 {
     public string Source { get; set; } = string.Empty;
@@ -15,11 +25,15 @@ public class WorkflowEdge<TState>
     public bool IsParallel { get; set; }
 }
 
+// Wraps a middleware callback: each middleware receives the current context and a
+// Next delegate, so it can inspect/react around the node action (used for guardrails).
 public class WorkflowMiddleware<TState>
 {
     public Func<WorkflowContext<TState>, Func<Task>, Task> Execute { get; set; } = (context, next) => next();
 }
 
+// State handed to middleware during a single node hop: the workflow state plus the
+// node being entered and the shared session id.
 public class WorkflowContext<TState>
 {
     public TState State { get; set; } = default!;
@@ -27,6 +41,9 @@ public class WorkflowContext<TState>
     public string SessionId { get; set; } = string.Empty;
 }
 
+// The graph engine itself: owns node/edge/middleware registries and the execution
+// loop that walks the graph, fans out parallel branches, respects conditional
+// edges, and applies middleware around every node hop.
 public class AgenticWorkflow<TState>
 {
     private readonly Dictionary<string, WorkflowNode<TState>> _nodes = new();
@@ -67,6 +84,8 @@ public class AgenticWorkflow<TState>
         return this;
     }
 
+    // Adds one parallel edge from a source to each target so the engine runs all
+    // targets concurrently (e.g., Architect -> Backend + Frontend).
     public AgenticWorkflow<TState> AddParallelSplit(string source, string[] targets)
     {
         foreach (var target in targets)
@@ -81,6 +100,8 @@ public class AgenticWorkflow<TState>
         return this;
     }
 
+    // Adds normal edges from several sources to a single target so the engine
+    // waits for every parallel branch before continuing (the synchronization join).
     public AgenticWorkflow<TState> AddParallelJoin(string[] sources, string target)
     {
         foreach (var source in sources)
@@ -94,6 +115,8 @@ public class AgenticWorkflow<TState>
         return this;
     }
 
+    // Adds a conditional edge: the runtime only travels it when Condition(state)
+    // is true, enabling approval-gated routing (e.g., Reviewer -> Deployment).
     public AgenticWorkflow<TState> AddConditionalEdge(string source, string target, Func<TState, bool> condition)
     {
         _edges.Add(new WorkflowEdge<TState>
@@ -115,6 +138,8 @@ public class AgenticWorkflow<TState>
         return this;
     }
 
+    // Registers a middleware to wrap node execution; middleware can reject/approve
+    // a transition (used by the Governance guardrail).
     public AgenticWorkflow<TState> UseMiddleware(Func<WorkflowContext<TState>, Func<Task>, Task> middleware)
     {
         _middlewares.Add(new WorkflowMiddleware<TState> { Execute = middleware });
@@ -167,11 +192,18 @@ public class AgenticWorkflow<TState>
             var parallelEdges = outgoingEdges.Where(e => e.IsParallel).ToList();
             if (parallelEdges.Count > 0)
             {
+                // HIGHLIGHT: The primary architecture visual. This is where the
+                // structured planner/fan-out flow comes alive - a planner node fans
+                // into CONCURRENT backend + frontend branches which run via
+                // Task.WhenAll, then rejoin at the reviewer, before a conditional
+                // (approval) edge gates deployment. Walk this block to show the DAG.
                 ConsoleLogger.Info($"[WORKFLOW] Parallel split from {currentNodeName} to {string.Join(", ", parallelEdges.Select(e => e.Target))}");
-                
+
                 var targetCount = parallelEdges.Count;
                 var currentIdx = 0;
 
+                // Launch every parallel branch as an independent task so they can
+                // truly execute concurrently, then wait for all of them below.
                 var parallelTasks = parallelEdges.Select(async edge =>
                 {
                     var parallelNodeName = edge.Target;
@@ -215,6 +247,9 @@ public class AgenticWorkflow<TState>
             }
             else
             {
+                // Conditional routing: when the outgoing edge carries an approval
+                // condition, only travel it if the condition passes; otherwise the
+                // graph halts (e.g., a disapproved solution never reaches deploy).
                 var conditionalEdge = outgoingEdges.FirstOrDefault(e => e.Condition != null);
                 if (conditionalEdge != null && conditionalEdge.Condition != null)
                 {
@@ -231,6 +266,8 @@ public class AgenticWorkflow<TState>
                 }
                 else
                 {
+                    // No condition on the edge: follow the next plain outgoing edge
+                    // (or stop if there is none), advancing the DAG one hop.
                     var nextEdge = outgoingEdges.FirstOrDefault(e => e.Condition == null);
                     if (nextEdge != null)
                     {

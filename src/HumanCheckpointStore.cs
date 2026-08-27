@@ -1,5 +1,10 @@
 namespace AgenticWorkflowConsole;
 
+// In-memory store for human checkpoint approvals. It tracks pending approval
+// requests by session id and records the operator's approved/rejected result so a
+// workflow can pause (awaiting input) and later recall the decision without
+// re-prompting the user. The graph's middleware layer calls Approve/Reject
+// once the operator types their verdict.
 public static class HumanCheckpointStore
 {
     private static readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _pendingApprovals = new();

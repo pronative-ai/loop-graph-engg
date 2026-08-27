@@ -1,5 +1,10 @@
 namespace AgenticWorkflowConsole.GraphParadigm;
 
+// The Graph paradigm: a directed acyclic graph (DAG) of specialized nodes that run
+// once each in a deterministic, pre-wired shape - Architect -> parallel
+// Backend/Frontend -> Reviewer -> Deployment. Unlike the Loop paradigm, there is no
+// iterative self-correction; instead, branch parallelism and a conditional edge gate
+// the flow. This class comments the node/edge wiring as the primary architecture visual.
 public static class GraphWorkflowDemo
 {
     public static async Task RunAsync(IChatClient? baseClient)
@@ -8,6 +13,8 @@ public static class GraphWorkflowDemo
         ConsoleLogger.Info("Demonstrating end-to-end DAG workflow with multi-agent orchestration");
         ConsoleLogger.Pause(1000);
 
+        // Prefer a live LLM graph, falling back to a deterministic simulation if
+        // no model is configured.
         if (baseClient == null)
         {
             ConsoleLogger.SecurityWarning("No active LLM client configured. Running direct deterministic graph orchestration...");
@@ -28,8 +35,11 @@ public static class GraphWorkflowDemo
         }
     }
 
+    // Builds and runs a live multi-agent DAG: one agent per node, wired through
+    // the shared AgenticWorkflow engine with parallel branches and a conditional gate.
     private static async Task RunAgenticGraphAsync(IChatClient baseClient)
     {
+        // Each node owns one specialist agent; its instructions pin its single role.
         var architect = new ChatClientAgent(
             chatClient: baseClient,
             instructions: """
@@ -68,6 +78,9 @@ public static class GraphWorkflowDemo
 
         var workflow = new AgenticWorkflow<CodingProjectState>();
 
+        // The graph stores agent outputs in the shared CodingProjectState, passed
+        // node-to-node so each branch reads what its predecessor wrote.
+
         // 1. Initial Node: Architect
         workflow.AddInitialNode("ArchitectNode", async state =>
         {
@@ -91,6 +104,10 @@ public static class GraphWorkflowDemo
         });
 
         // 2. Parallel Split: BackendCoder & FrontendCoder
+        // HIGHLIGHT: A single architect feeds two branches that run CONCURRENTLY
+        // (back end + front end). The engine fans the split out, runs both in
+        // parallel via Task.WhenAll, then rejoins them - the core Graph-paradigm
+        // contrast to Loop's single sequential agent.
         workflow.AddParallelSplit("ArchitectNode", ["BackendCoderNode", "FrontendCoderNode"]);
 
         workflow.AddNode("BackendCoderNode", async state =>
@@ -128,6 +145,8 @@ public static class GraphWorkflowDemo
         });
 
         // 3. Parallel Join: ReviewerNode
+        // Both branches output into the shared state, then the workflow rejoins
+        // them at a single ReviewerNode once both have completed (synchronization).
         workflow.AddParallelJoin(["BackendCoderNode", "FrontendCoderNode"], "ReviewerNode");
 
         workflow.AddNode("ReviewerNode", async state =>
@@ -152,9 +171,12 @@ public static class GraphWorkflowDemo
         });
 
         // 4. Conditional Edge: to DeploymentNode
+        // Approval gate: only the ReviewerNode's IsApproved=true lets the graph
+        // advance into Deployment; a rejected solution halts before release.
         workflow.AddConditionalEdge("ReviewerNode", "DeploymentNode", state => state.IsApproved);
 
         // 5. Terminal Node: Deployment
+        // Marked terminal so the engine stops the workflow once it finishes here.
         workflow.AddTerminalNode("DeploymentNode", state =>
         {
             ConsoleLogger.Info("[DeploymentNode] Finalizing release package and verifying manifest...");

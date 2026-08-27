@@ -1,5 +1,9 @@
 namespace AgenticWorkflowConsole.Shared;
 
+// Central console output helper: every demo writes through this so the terminal
+// formatting stays consistent (colors, borders, separators) and the demos stay
+// free of presentation code. Also owns the timing/sleep helpers so the live
+// presentation reads as a scripted walkthrough.
 public static class ConsoleLogger
 {
     public static void GraphBorder(string message)

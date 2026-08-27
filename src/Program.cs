@@ -5,8 +5,13 @@ using AgenticWorkflowConsole.Shared;
 
 namespace AgenticWorkflowConsole;
 
+// Program is the console application entry point. It owns process-level setup
+// (loading the .env file and building the shared LLM chat client) and then
+// dispatches control to whichever demo paradigm the user selects: Loop, Graph,
+// or Governance. The heavy lifting lives in the demo classes themselves.
 internal static class Program
 {
+    // Shared across all demos so each reuses the same configured model/session.
     private static IChatClient? s_chatClient;
 
     static async Task Main(string[] args)
@@ -15,8 +20,11 @@ internal static class Program
         ConsoleLogger.Info("Loop Engineering vs Graph Engineering (Real Orchestration)");
         ConsoleLogger.Pause(500);
 
+        // Gateway setup is best-effort: if the .env or credentials are missing,
+        // we log a warning and keep going in deterministic (offline) mode.
         try
         {
+            // Load .env values first, then construct the single shared chat client.
             Env.TraversePath().Load();
             var gatewayUrl = LlmConfiguration.LoadGatewayUrl();
             var modelName = LlmConfiguration.LoadModelName();
@@ -32,6 +40,9 @@ internal static class Program
             ConsoleLogger.BlankLine();
         }
 
+        // HIGHLIGHT: The presentation start anchor. This interactive dispatch
+        // loop lets the audience pick the Live Loop, Graph, or Governance demo.
+        // Each demo illustrates a different agent-orchestration paradigm.
         while (true)
         {
             ConsoleLogger.BlankLine();
