@@ -1,10 +1,37 @@
 using AgenticWorkflowConsole.LoopParadigm;
+using Microsoft.Extensions.AI;
 using Xunit;
 
 namespace AksAgenticWorkflowConsole.Tests;
 
 public class LoopDiagnosticTests
 {
+    private sealed class MockEvaluatorChatClient(Func<string, string> responseFactory) : IChatClient
+    {
+        public ChatClientMetadata Metadata => new("MockEvaluator");
+
+        public Task<ChatResponse> GetResponseAsync(
+            IEnumerable<ChatMessage> chatMessages, 
+            ChatOptions? options = null, 
+            CancellationToken cancellationToken = default)
+        {
+            var userText = chatMessages.LastOrDefault()?.Text ?? string.Empty;
+            var reply = responseFactory(userText);
+            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, reply)));
+        }
+
+        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<ChatMessage> chatMessages, 
+            ChatOptions? options = null, 
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+        public void Dispose() { }
+    }
+
     [Fact]
     public void InitialState_And_CodeInspection_Work()
     {
@@ -31,12 +58,34 @@ public class LoopDiagnosticTests
     }
 
     [Fact]
-    public async Task CompileAndVerifyAsync_Offline_IncrementsIteration()
+    public async Task CompileAndVerifyAsync_NullChatClient_ThrowsArgumentNullException()
     {
         var workspace = new LoopDiagnosticWorkspace();
-        var output = await workspace.CompileAndVerifyAsync(null);
+        await Assert.ThrowsAsync<ArgumentNullException>(() => workspace.CompileAndVerifyAsync(null!));
+    }
 
-        Assert.Contains("Offline build check", output);
+    [Fact]
+    public async Task CompileAndVerifyAsync_WithChatClient_EvaluatesCodeAndUpdatesState()
+    {
+        var workspace = new LoopDiagnosticWorkspace();
+        var mockClient = new MockEvaluatorChatClient(prompt =>
+            "Build FAILED.\nOrderDiscountEngine.cs(16,36): error CS0103\nSTATUS: [FAIL]");
+
+        var output = await workspace.CompileAndVerifyAsync(mockClient);
+
+        Assert.Contains("Build FAILED", output);
+        Assert.Contains("STATUS: [FAIL]", output);
         Assert.Equal(1, workspace.IterationCount);
+        Assert.False(workspace.IsClean);
+
+        // Next evaluation with clean pass
+        var mockCleanClient = new MockEvaluatorChatClient(prompt =>
+            "Build succeeded.\n0 Warning(s)\n0 Error(s)\nSTATUS: [PASS - VERIFIED]");
+
+        var cleanOutput = await workspace.CompileAndVerifyAsync(mockCleanClient);
+
+        Assert.Contains("STATUS: [PASS - VERIFIED]", cleanOutput);
+        Assert.Equal(2, workspace.IterationCount);
+        Assert.True(workspace.IsClean);
     }
 }

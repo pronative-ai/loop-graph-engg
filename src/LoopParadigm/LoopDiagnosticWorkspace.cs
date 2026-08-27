@@ -66,14 +66,11 @@ public class LoopDiagnosticWorkspace
     /// <summary>
     /// Compiles and verifies the current workspace code using real-time LLM analysis.
     /// </summary>
-    public async Task<string> CompileAndVerifyAsync(IChatClient? chatClient)
+    public async Task<string> CompileAndVerifyAsync(IChatClient chatClient)
     {
-        IterationCount++;
+        ArgumentNullException.ThrowIfNull(chatClient);
 
-        if (chatClient == null)
-        {
-            return $"[WORKSPACE] Offline build check (Iteration #{IterationCount}): No active LLM evaluator.";
-        }
+        IterationCount++;
 
         var evalPrompt = $"""
             You are the automated .NET 10 / C# 14 Roslyn Compiler and Static Analysis Engine.

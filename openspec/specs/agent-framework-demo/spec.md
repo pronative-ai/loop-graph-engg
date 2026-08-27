@@ -34,7 +34,7 @@ The system SHALL provide a main entry point that orchestrates walkthrough execut
 
 ### Requirement: Loop paradigm demonstration
 
-The system SHALL demonstrate an AIAgent executing an internal autonomous loop across multiple iterations (minimum 2 iterations, typically 3 to 4) with live tool execution, real-time LLM-driven diagnostic feedback, warning refinement, and final clean convergence in an interactive walkthrough.
+The system SHALL demonstrate an AIAgent executing an internal autonomous loop across multiple iterations (minimum 2 iterations, typically 3 to 4) with live tool execution, mandatory real-time LLM-driven diagnostic feedback, progressive iteration counter incrementation, warning refinement, and final clean convergence in an interactive walkthrough.
 
 #### Scenario: Iterative correction loop
 
@@ -44,12 +44,12 @@ The system SHALL demonstrate an AIAgent executing an internal autonomous loop ac
 #### Scenario: Live tool execution
 
 - **WHEN** the agent calls the diagnostic or verification tools
-- **THEN** the system executes real-time dynamic LLM evaluation against the current code buffer without hardcoded strings and returns live compiler/quality feedback back to the agent
+- **THEN** the system executes real-time dynamic LLM evaluation against the current code buffer with a mandatory `IChatClient` (disallowing offline fallback strings) and returns live compiler/quality feedback back to the agent
 
 #### Scenario: Loop visual output
 
 - **WHEN** the loop executes
-- **THEN** each iteration outputs iteration counter with `[Loop #X] [LLM REASONING]` (Blue), `[Loop #X] [TOOL CALL]` (Cyan), and `[Loop #X] [OBSERVATION]` (DarkGray) headers
+- **THEN** each iteration dynamically increments and outputs the iteration counter with `[Loop #X] [LLM REASONING]` (Blue), `[Loop #X] [TOOL CALL]` (Cyan), and `[Loop #X] [OBSERVATION]` (DarkGray) headers
 
 #### Scenario: Loop border styling
 
