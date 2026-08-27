@@ -6,9 +6,9 @@ using AgenticWorkflowConsole.Shared;
 namespace AgenticWorkflowConsole;
 
 // Program is the console application entry point. It owns process-level setup
-// (loading the .env file and building the shared LLM chat client) and then
-// dispatches control to whichever walkthrough paradigm the user selects: Loop, Graph,
-// or Governance. The heavy lifting lives in the walkthrough classes themselves.
+// (loading the .env file, initializing OpenTelemetry tracing, and building the shared LLM chat client)
+// and then dispatches control to whichever walkthrough paradigm the user selects: Loop, Graph,
+// or Governance.
 internal static class Program
 {
     // Shared across all walkthroughs so each reuses the same configured model/session.
@@ -20,12 +20,17 @@ internal static class Program
         ConsoleLogger.Info("Initializing agentic runtime environment...");
         ConsoleLogger.Pause(1000);
 
-        // Gateway setup is best-effort: if the .env or credentials are missing,
-        // we log a warning and keep going in direct execution mode.
+        // Load .env values first
+        Env.TraversePath().Load();
+
+        // Initialize OpenTelemetry distributed tracing with Langfuse export
+        using var tracerProvider = TelemetryConfiguration.InitializeTracerProvider();
+        var otlpEndpoint = TelemetryConfiguration.LoadOtlpEndpoint();
+        ConsoleLogger.Success($"[MONITORING] OpenTelemetry trace export target -> {otlpEndpoint}");
+
+        // Gateway setup is best-effort: if credentials are missing, we log a note and proceed
         try
         {
-            // Load .env values first, then construct the single shared chat client.
-            Env.TraversePath().Load();
             var gatewayUrl = LlmConfiguration.LoadGatewayUrl();
             var modelName = LlmConfiguration.LoadModelName();
             s_chatClient = LlmConfiguration.CreateChatClient();
@@ -61,16 +66,28 @@ internal static class Program
             switch (choice)
             {
                 case "1":
-                    await LoopAgentWalkthrough.RunAsync(s_chatClient);
+                    using (TelemetryConfiguration.ActivitySource.StartActivity("Walkthrough.LoopEngineering"))
+                    {
+                        await LoopAgentWalkthrough.RunAsync(s_chatClient);
+                    }
                     break;
                 case "2":
-                    await GraphWorkflowWalkthrough.RunAsync(s_chatClient);
+                    using (TelemetryConfiguration.ActivitySource.StartActivity("Walkthrough.GraphEngineering"))
+                    {
+                        await GraphWorkflowWalkthrough.RunAsync(s_chatClient);
+                    }
                     break;
                 case "3":
-                    await MiddlewareGuardrail.RunWithGuardrailAsync(s_chatClient);
+                    using (TelemetryConfiguration.ActivitySource.StartActivity("Walkthrough.GovernanceMiddleware"))
+                    {
+                        await MiddlewareGuardrail.RunWithGuardrailAsync(s_chatClient);
+                    }
                     break;
                 case "4":
-                    await RunAllWalkthroughs();
+                    using (TelemetryConfiguration.ActivitySource.StartActivity("Walkthrough.RunAll"))
+                    {
+                        await RunAllWalkthroughs();
+                    }
                     break;
                 case "5":
                     ConsoleLogger.Success("Thank you for exploring AI Agent Workflows with pronative.ai. Goodbye!");
