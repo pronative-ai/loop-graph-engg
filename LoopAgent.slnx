@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/AksAgenticWorkflowConsole.csproj" />
+  <Project Path="tests/AksAgenticWorkflowConsole.Tests/AksAgenticWorkflowConsole.Tests.csproj" />
+</Solution>

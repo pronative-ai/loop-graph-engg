@@ -29,9 +29,9 @@ clean:
 	dotnet clean src/AksAgenticWorkflowConsole.csproj --configuration Debug
 	rm -rf src/bin src/obj
 
-# Run tests (when test project is added)
+# Run tests
 test:
-	dotnet test
+	dotnet test tests/AksAgenticWorkflowConsole.Tests/AksAgenticWorkflowConsole.Tests.csproj
 
 # Format code
 format:

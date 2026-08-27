@@ -6,7 +6,7 @@ Demonstrate Loop Engineering vs Agentic Graph Engineering patterns using the off
 
 ### Requirement: Target framework and dependencies
 
-The system SHALL target .NET 10.0 and reference official Microsoft Agent Framework packages.
+The system SHALL target .NET 10.0, reference official Microsoft Agent Framework packages, and support seamless build and test automation.
 
 #### Scenario: Project configuration
 
@@ -17,6 +17,11 @@ The system SHALL target .NET 10.0 and reference official Microsoft Agent Framewo
 
 - **WHEN** `dotnet build` is executed
 - **THEN** the build succeeds with zero warnings and zero errors
+
+#### Scenario: Automated test execution
+
+- **WHEN** `make test` or `dotnet test` is executed
+- **THEN** the test runner accurately targets and executes the test project suite `tests/AksAgenticWorkflowConsole.Tests` with zero failures
 
 ### Requirement: Program entry point
 
@@ -121,7 +126,7 @@ The system SHALL use a ConsoleLogger class for all output formatting, brand pres
 #### Scenario: Brand banner display
 
 - **WHEN** the application starts
-- **THEN** the system displays a prominent, large-font brand banner (`pronative.ai`) in bright Green (`ConsoleColor.Green`)
+- **THEN** the system displays a prominent, large-font brand banner (`pronative.ai`) in a high-visibility theme color (`ConsoleColor.Cyan` or `ConsoleColor.Green`)
 
 #### Scenario: No raw Console.WriteLine
 
@@ -131,7 +136,7 @@ The system SHALL use a ConsoleLogger class for all output formatting, brand pres
 #### Scenario: Color-coded output
 
 - **WHEN** logs are displayed
-- **THEN** they use high-readability colors: Green for brand banner & success, Magenta for graph borders, Yellow for loop borders, Blue for LLM reasoning, Cyan for tool calls, Gray for observations, and DarkRed for security warnings
+- **THEN** they use high-readability colors: Cyan/Green for brand banner & success, Magenta for graph borders, Yellow for loop borders, Blue for LLM reasoning, Cyan for tool calls, Gray for observations, and DarkRed for security warnings
 
 #### Scenario: Timing delays
 
