@@ -2,7 +2,7 @@
 
 ### Requirement: Environment variable configuration
 
-The system SHALL read LLM endpoint and OpenTelemetry / Langfuse monitoring configuration from environment variables.
+The system SHALL read LLM endpoint and OpenTelemetry distributed tracing configuration from environment variables using official OpenTelemetry standard names.
 
 #### Scenario: Load gateway URL from environment
 
@@ -19,10 +19,10 @@ The system SHALL read LLM endpoint and OpenTelemetry / Langfuse monitoring confi
 - **WHEN** the application starts
 - **THEN** the system reads `MODEL_NAME` environment variable and uses it for model selection
 
-#### Scenario: Load OpenTelemetry and Langfuse monitoring variables
+#### Scenario: Load standard OpenTelemetry monitoring configuration
 
 - **WHEN** the application starts
-- **THEN** the system loads `LANGFUSE_HOST`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `OTEL_EXPORTER_OTLP_ENDPOINT` for trace export
+- **THEN** the system reads `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`, and `OTEL_SERVICE_NAME` to route traces to any OTLP collector (such as Langfuse or SigNoz)
 
 #### Scenario: Missing environment variables
 

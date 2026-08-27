@@ -6,7 +6,7 @@ Simplify environment variable naming and endpoint configuration for the LLM gate
 
 ### Requirement: Environment variable configuration
 
-The system SHALL read LLM endpoint configuration from environment variables using simplified names without project-specific prefixes.
+The system SHALL read LLM endpoint and OpenTelemetry distributed tracing configuration from environment variables using official OpenTelemetry standard names.
 
 #### Scenario: Load gateway URL from environment
 
@@ -22,6 +22,11 @@ The system SHALL read LLM endpoint configuration from environment variables usin
 
 - **WHEN** the application starts
 - **THEN** the system reads `MODEL_NAME` environment variable and uses it for model selection
+
+#### Scenario: Load standard OpenTelemetry monitoring configuration
+
+- **WHEN** the application starts
+- **THEN** the system reads `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`, and `OTEL_SERVICE_NAME` to route traces to any OTLP collector (such as Langfuse or SigNoz)
 
 #### Scenario: Missing environment variables
 
