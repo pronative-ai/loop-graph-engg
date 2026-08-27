@@ -189,4 +189,48 @@ public class TelemetryConfigurationTests
 
         Assert.Equal(OpenTelemetry.ExportResult.Success, result);
     }
+
+    [Fact]
+    public void ToolActivity_AttachesInputAndOutputTags()
+    {
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = _ => true,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        using var activity = TelemetryConfiguration.ActivitySource.StartActivity("Tool.InspectCode");
+        Assert.NotNull(activity);
+        activity.SetTag("gen_ai.tool.name", "InspectCode");
+        activity.SetTag("gen_ai.tool.input", "targetFileName=OrderDiscountEngine.cs");
+        activity.SetTag("gen_ai.tool.output", "public class OrderDiscountEngine { }");
+        activity.SetTag("gen_ai.tool.is_success", true);
+
+        Assert.Equal("InspectCode", activity.GetTagItem("gen_ai.tool.name"));
+        Assert.Equal("targetFileName=OrderDiscountEngine.cs", activity.GetTagItem("gen_ai.tool.input"));
+        Assert.Equal("public class OrderDiscountEngine { }", activity.GetTagItem("gen_ai.tool.output"));
+        Assert.Equal(true, activity.GetTagItem("gen_ai.tool.is_success"));
+    }
+
+    [Fact]
+    public void WorkflowNodeActivity_AttachesStateTags()
+    {
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = _ => true,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        using var activity = TelemetryConfiguration.ActivitySource.StartActivity("Workflow.Node.ArchitectNode");
+        Assert.NotNull(activity);
+        activity.SetTag("workflow.node_name", "ArchitectNode");
+        activity.SetTag("workflow.goal", "Build Task Manager Microservice");
+        activity.SetTag("workflow.output_spec", "Spec: TaskManager API Contract");
+
+        Assert.Equal("ArchitectNode", activity.GetTagItem("workflow.node_name"));
+        Assert.Equal("Build Task Manager Microservice", activity.GetTagItem("workflow.goal"));
+        Assert.Equal("Spec: TaskManager API Contract", activity.GetTagItem("workflow.output_spec"));
+    }
 }

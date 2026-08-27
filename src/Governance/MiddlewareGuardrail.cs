@@ -25,6 +25,10 @@ public static class MiddlewareGuardrail
         {
             if (string.Equals(context.NextNode, "DeploymentNode", StringComparison.OrdinalIgnoreCase))
             {
+                using var guardrailActivity = TelemetryConfiguration.ActivitySource.StartActivity("Governance.GuardrailCheckpoint");
+                guardrailActivity?.SetTag("guardrail.session_id", context.SessionId);
+                guardrailActivity?.SetTag("guardrail.target_node", context.NextNode);
+
                 // HIGHLIGHT: The human-checkpoint gate for production deployment.
                 // Middleware intercepts the transition, prompts the operator for
                 // approval, and either allows the pipeline to proceed (pass) or
@@ -42,11 +46,18 @@ public static class MiddlewareGuardrail
 
                 if (string.Equals(input?.Trim(), "deny", StringComparison.OrdinalIgnoreCase))
                 {
+                    guardrailActivity?.SetTag("guardrail.operator_action", "deny");
+                    guardrailActivity?.SetTag("guardrail.is_approved", false);
+                    guardrailActivity?.SetTag("guardrail.reason", "Operator checkpoint denied transition to DeploymentNode.");
+
                     HumanCheckpointStore.Reject(context.SessionId);
                     ConsoleLogger.BlankLine();
                     ConsoleLogger.SecurityWarning("Action Blocked: Deployment was DENIED by operator.");
                     throw new UnauthorizedAccessException("Operator checkpoint denied transition to DeploymentNode.");
                 }
+
+                guardrailActivity?.SetTag("guardrail.operator_action", "approve");
+                guardrailActivity?.SetTag("guardrail.is_approved", true);
 
                 HumanCheckpointStore.Approve(context.SessionId);
                 ConsoleLogger.Success("[Middleware] Authorization confirmed: Resuming execution pipeline.");

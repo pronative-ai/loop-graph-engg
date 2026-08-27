@@ -1,3 +1,4 @@
+using System.Text;
 using AgenticWorkflowConsole.Shared;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
@@ -36,10 +37,16 @@ public static class LoopAgentWalkthrough
                 int iter = Math.Max(1, workspace.IterationCount);
                 activity?.SetTag("loop.iteration", iter);
                 activity?.SetTag("tool.name", "InspectCode");
+                activity?.SetTag("gen_ai.tool.name", "InspectCode");
+                activity?.SetTag("gen_ai.tool.input", $"targetFileName={workspace.TargetFileName}");
 
                 ConsoleLogger.BlankLine();
                 ConsoleLogger.ToolCall(iter, $"Executing live tool [InspectCode] (Iteration #{iter}) ({workspace.TargetFileName})...");
                 var code = workspace.InspectCode();
+                
+                activity?.SetTag("gen_ai.tool.output", code);
+                activity?.SetTag("gen_ai.tool.is_success", true);
+
                 ConsoleLogger.Observation(iter, $"Source code inspection returned {code.Split('\n').Length} lines.");
                 ConsoleLogger.BlankLine();
                 return code;
@@ -48,17 +55,26 @@ public static class LoopAgentWalkthrough
             "Inspects the target C# source code file in the workspace.");
 
         var patchTool = AIFunctionFactory.Create(
-            (string updatedCode, string explanation) =>
+            (string? updatedCode, string? explanation) =>
             {
                 using var activity = TelemetryConfiguration.ActivitySource.StartActivity("Tool.ApplyCodeFix");
                 int iter = Math.Max(1, workspace.IterationCount);
+                var safeExplanation = explanation ?? string.Empty;
+                var safeCode = updatedCode ?? string.Empty;
+
                 activity?.SetTag("loop.iteration", iter);
                 activity?.SetTag("tool.name", "ApplyCodeFix");
-                activity?.SetTag("code.explanation", explanation);
+                activity?.SetTag("gen_ai.tool.name", "ApplyCodeFix");
+                activity?.SetTag("gen_ai.tool.input", $"explanation={safeExplanation}, patchLength={safeCode.Length}");
+                activity?.SetTag("code.explanation", safeExplanation);
 
                 ConsoleLogger.BlankLine();
-                ConsoleLogger.ToolCall(iter, $"Executing live tool [ApplyCodeFix] (Iteration #{iter}) - {explanation}...");
-                var result = workspace.ApplyCodeFix(updatedCode, explanation);
+                ConsoleLogger.ToolCall(iter, $"Executing live tool [ApplyCodeFix] (Iteration #{iter}) - {safeExplanation}...");
+                var result = workspace.ApplyCodeFix(safeCode, safeExplanation);
+
+                activity?.SetTag("gen_ai.tool.output", result);
+                activity?.SetTag("gen_ai.tool.is_success", true);
+
                 ConsoleLogger.Observation(iter, result);
                 ConsoleLogger.BlankLine();
                 return result;
@@ -73,10 +89,16 @@ public static class LoopAgentWalkthrough
                 int iter = workspace.IterationCount + 1;
                 activity?.SetTag("loop.iteration", iter);
                 activity?.SetTag("tool.name", "CompileAndVerify");
+                activity?.SetTag("gen_ai.tool.name", "CompileAndVerify");
+                activity?.SetTag("gen_ai.tool.input", $"targetFileName={workspace.TargetFileName}, iteration={iter}");
 
                 ConsoleLogger.BlankLine();
                 ConsoleLogger.ToolCall(iter, $"Executing live tool [CompileAndVerify] (Iteration #{iter})...");
                 var output = await workspace.CompileAndVerifyAsync(baseClient);
+
+                activity?.SetTag("gen_ai.tool.output", output);
+                activity?.SetTag("gen_ai.tool.is_success", workspace.IsClean);
+
                 ConsoleLogger.Observation(iter, output);
                 ConsoleLogger.BlankLine();
                 return output;
@@ -118,16 +140,22 @@ public static class LoopAgentWalkthrough
                 using var loopActivity = TelemetryConfiguration.ActivitySource.StartActivity($"Loop.Iteration.{currentLoop}");
                 loopActivity?.SetTag("loop.iteration", currentLoop);
                 loopActivity?.SetTag("gen_ai.agent.name", "LoopDevAgent");
+                loopActivity?.SetTag("gen_ai.prompt", prompt);
 
                 ConsoleLogger.LlmReasoning(currentLoop, $"[Loop #{currentLoop}] Autonomous Agent reasoning and executing corrective action...");
 
+                var responseCollector = new StringBuilder();
                 await foreach (var update in agent.RunStreamingAsync(prompt, session: null))
                 {
                     if (!string.IsNullOrEmpty(update.Text))
                     {
                         ConsoleLogger.StreamToken(update.Text);
+                        responseCollector.Append(update.Text);
                     }
                 }
+
+                loopActivity?.SetTag("gen_ai.response", responseCollector.ToString());
+                loopActivity?.SetTag("loop.is_clean", workspace.IsClean);
 
                 if (workspace.IsClean)
                 {

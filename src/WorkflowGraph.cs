@@ -169,6 +169,14 @@ public class AgenticWorkflow<TState>
             nodeActivity?.SetTag("workflow.session_id", _sessionId);
             nodeActivity?.SetTag("workflow.node_name", currentNodeName);
 
+            if (state is CodingProjectState preState)
+            {
+                nodeActivity?.SetTag("workflow.goal", preState.Goal);
+                if (!string.IsNullOrEmpty(preState.ArchitectureSpec)) nodeActivity?.SetTag("workflow.input_spec", preState.ArchitectureSpec);
+                if (!string.IsNullOrEmpty(preState.BackendCode)) nodeActivity?.SetTag("workflow.input_backend", preState.BackendCode);
+                if (!string.IsNullOrEmpty(preState.FrontendCode)) nodeActivity?.SetTag("workflow.input_frontend", preState.FrontendCode);
+            }
+
             await ExecuteMiddlewarePipeline(context, async () =>
             {
                 if (currentNode.ExecuteAsync != null)
@@ -178,6 +186,15 @@ public class AgenticWorkflow<TState>
 
                 ConsoleLogger.Info($"[WORKFLOW] Executed node: {currentNodeName}");
             });
+
+            if (state is CodingProjectState postState)
+            {
+                if (!string.IsNullOrEmpty(postState.ArchitectureSpec)) nodeActivity?.SetTag("workflow.output_spec", postState.ArchitectureSpec);
+                if (!string.IsNullOrEmpty(postState.BackendCode)) nodeActivity?.SetTag("workflow.output_backend", postState.BackendCode);
+                if (!string.IsNullOrEmpty(postState.FrontendCode)) nodeActivity?.SetTag("workflow.output_frontend", postState.FrontendCode);
+                if (!string.IsNullOrEmpty(postState.ReviewNotes)) nodeActivity?.SetTag("workflow.output_review", postState.ReviewNotes);
+                if (!string.IsNullOrEmpty(postState.DeploymentLogs)) nodeActivity?.SetTag("workflow.output_deployment", postState.DeploymentLogs);
+            }
 
             if (currentNode.IsTerminal)
             {
@@ -215,6 +232,12 @@ public class AgenticWorkflow<TState>
                     parallelActivity?.SetTag("workflow.session_id", _sessionId);
                     parallelActivity?.SetTag("workflow.node_name", parallelNodeName);
 
+                    if (state is CodingProjectState preParallelState)
+                    {
+                        parallelActivity?.SetTag("workflow.goal", preParallelState.Goal);
+                        if (!string.IsNullOrEmpty(preParallelState.ArchitectureSpec)) parallelActivity?.SetTag("workflow.input_spec", preParallelState.ArchitectureSpec);
+                    }
+
                     var branchPrefix = (Interlocked.Increment(ref currentIdx) == targetCount) ? "└──" : "├──";
                     ConsoleLogger.ParallelBranch(branchPrefix, $"Executing parallel node [{parallelNodeName}]");
 
@@ -231,6 +254,12 @@ public class AgenticWorkflow<TState>
                         {
                             await parallelNode.ExecuteAsync(state);
                         });
+
+                        if (state is CodingProjectState postParallelState)
+                        {
+                            if (!string.IsNullOrEmpty(postParallelState.BackendCode)) parallelActivity?.SetTag("workflow.output_backend", postParallelState.BackendCode);
+                            if (!string.IsNullOrEmpty(postParallelState.FrontendCode)) parallelActivity?.SetTag("workflow.output_frontend", postParallelState.FrontendCode);
+                        }
 
                         ConsoleLogger.ParallelBranch(branchPrefix, $"Completed parallel node [{parallelNodeName}]");
                     }
