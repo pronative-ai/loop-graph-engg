@@ -34,17 +34,17 @@ The system SHALL provide a main entry point that orchestrates walkthrough execut
 
 ### Requirement: Loop paradigm demonstration
 
-The system SHALL demonstrate an AIAgent executing an internal autonomous loop with live tool execution and dynamic error diagnosis in an interactive walkthrough.
+The system SHALL demonstrate an AIAgent executing an internal autonomous loop across multiple iterations (minimum 2 iterations, typically 3 to 4) with live tool execution, real-time LLM-driven diagnostic feedback, warning refinement, and final clean convergence in an interactive walkthrough.
 
 #### Scenario: Iterative correction loop
 
 - **WHEN** the LoopAgentWalkthrough runs with an active LLM client
-- **THEN** an `AIAgent` executes via `agent.RunStreamingAsync()` with a registered live `CompileProject` tool that executes verification and converges upon successful compilation
+- **THEN** an `AIAgent` executes via `agent.RunStreamingAsync()` across multiple distinct loop cycles with registered live inspection, patch, and compilation verification tools until converging upon zero warnings and zero errors
 
 #### Scenario: Live tool execution
 
-- **WHEN** the agent calls the compilation tool
-- **THEN** the system executes the build verification tool and provides the exact compiler/diagnostic output back to the agent
+- **WHEN** the agent calls the diagnostic or verification tools
+- **THEN** the system executes real-time dynamic LLM evaluation against the current code buffer without hardcoded strings and returns live compiler/quality feedback back to the agent
 
 #### Scenario: Loop visual output
 

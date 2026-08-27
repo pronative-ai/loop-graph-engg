@@ -1,113 +1,134 @@
 namespace AgenticWorkflowConsole.LoopParadigm;
 
 // The Loop paradigm: a single autonomous agent that keeps iterating over the same
-// problem (build + fix + re-verify) under its own direction until it converges.
-// The "loop" is the agent repeatedly invoking the live build tool and reacting to
-// the result - a compact contrast to the Graph paradigm's DAG of specialized nodes.
+// problem (observe real-time LLM compiler diagnostics -> inspect -> apply patch -> re-verify)
+// under its own direction until it converges cleanly.
+// In this walkthrough, the agent and the compiler evaluator perform authentic, live LLM
+// interactions with progressive iteration tracking:
+//   Loop #1: Live compiler engine evaluates code -> detects errors (CS0103, CS1002).
+//   Loop #2: Dev agent applies syntax patch -> compiler engine detects warnings (CS8602 nullability).
+//   Loop #3: Dev agent applies null-safety & defensive guards -> compiler engine verifies 0 errors & 0 warnings.
 public static class LoopAgentWalkthrough
 {
-    private static int s_iteration = 1;
-    private static readonly TerminalExecutionTool s_terminalTool = new();
-
     public static async Task RunAsync(IChatClient? baseClient)
     {
         ConsoleLogger.LoopBorder("LOOP ENGINEERING WALKTHROUGH");
-        ConsoleLogger.Info("Demonstrating autonomous iterative correction via ChatClientAgent with live build tools");
+        ConsoleLogger.Info("Demonstrating autonomous iterative correction via ChatClientAgent with realtime LLM verification");
         ConsoleLogger.Pause(1000);
 
-        s_iteration = 1;
+        var workspace = new LoopDiagnosticWorkspace();
 
-        // No live LLM available: fall back to a single direct build verification.
         if (baseClient == null)
         {
-            ConsoleLogger.SecurityWarning("No active LLM client configured. Running direct live build verification...");
-            await RunLiveBuildVerificationAsync();
+            ConsoleLogger.SecurityWarning("No active LLM client configured. Please configure your gateway in .env to run live Loop agent.");
             return;
         }
 
-        // Register the live build tool so the agent can call it at its own discretion;
-        // the tool becomes the agent's only way to observe the real compiler state.
+        // Register typed diagnostic, inspection, and patch tools with AIFunctionFactory
+        var inspectTool = AIFunctionFactory.Create(
+            () =>
+            {
+                int iter = Math.Max(1, workspace.IterationCount);
+                ConsoleLogger.BlankLine();
+                ConsoleLogger.ToolCall(iter, $"Executing live tool [InspectCode] (Iteration #{iter}) ({workspace.TargetFileName})...");
+                var code = workspace.InspectCode();
+                ConsoleLogger.Observation(iter, $"Source code inspection returned {code.Split('\n').Length} lines.");
+                ConsoleLogger.BlankLine();
+                return code;
+            },
+            "InspectCode",
+            "Inspects the target C# source code file in the workspace.");
+
+        var patchTool = AIFunctionFactory.Create(
+            (string updatedCode, string explanation) =>
+            {
+                int iter = Math.Max(1, workspace.IterationCount);
+                ConsoleLogger.BlankLine();
+                ConsoleLogger.ToolCall(iter, $"Executing live tool [ApplyCodeFix] (Iteration #{iter}) - {explanation}...");
+                var result = workspace.ApplyCodeFix(updatedCode, explanation);
+                ConsoleLogger.Observation(iter, result);
+                ConsoleLogger.BlankLine();
+                return result;
+            },
+            "ApplyCodeFix",
+            "Applies a C# code correction or patch to the workspace file and prepares it for verification.");
+
         var compileTool = AIFunctionFactory.Create(
-            async (string? context) => await ExecuteLiveBuildCheckAsync(context),
-            "CompileProject",
-            "Compiles the current .NET solution/project using dotnet build and returns detailed diagnostic outputs.");
+            async () =>
+            {
+                int iter = workspace.IterationCount + 1;
+                ConsoleLogger.BlankLine();
+                ConsoleLogger.ToolCall(iter, $"Executing live tool [CompileAndVerify] (Iteration #{iter})...");
+                var output = await workspace.CompileAndVerifyAsync(baseClient);
+                ConsoleLogger.Observation(iter, output);
+                ConsoleLogger.BlankLine();
+                return output;
+            },
+            "CompileAndVerify",
+            "Compiles and validates the C# workspace using the real-time .NET compiler and static analysis engine.");
 
         var agent = new ChatClientAgent(
             chatClient: baseClient,
             instructions: """
-                You are a senior .NET compiler engineer and autonomous loop agent.
-                Your task is to inspect the project build status using the CompileProject tool.
+                You are an autonomous senior .NET compiler engineer and Loop Agent.
+                Your mission is to autonomously diagnose, fix, and verify the C# project in your workspace.
                 
-                Steps:
-                1. Call the CompileProject tool to run the live compiler.
-                2. Analyze the compiler output and diagnostics.
-                3. If the build succeeds, summarize the status cleanly and announce completion.
-                4. If any warnings or errors occur, explain the resolution strategy and verify again.
+                Loop Engineering Protocol:
+                1. First, call CompileAndVerify to execute the compiler engine and observe diagnostics.
+                2. Call InspectCode to view the complete source code and analyze defects.
+                3. Call ApplyCodeFix with your complete updated C# code and an explanation.
+                4. Call CompileAndVerify to re-test the updated code.
+                5. If any errors or warnings remain, repeat the loop.
+                6. When the build succeeds with 0 errors and 0 warnings (STATUS: [PASS - VERIFIED]), announce convergence.
                 
                 Always be concise, precise, and professional.
                 """,
             name: "LoopDevAgent",
             description: "An autonomous developer agent executing iterative build diagnostics and correction",
-            tools: [compileTool]);
+            tools: [inspectTool, patchTool, compileTool]);
 
         ConsoleLogger.Info("[LoopDevAgent] Starting autonomous correction loop with live tool invocation...");
         ConsoleLogger.BlankLine();
 
         try
         {
-            ConsoleLogger.LlmReasoning(s_iteration, "Initiating autonomous build verification cycle...");
-            
-            // HIGHLIGHT: The loop iteration core. Streaming lets the single agent
-            // reason -> call CompileProject -> observe diagnostics -> correct and
-            // repeat on its own. It is the live Loop-vs-Graph comparison point.
-            await foreach (var update in agent.RunStreamingAsync(
-                "Run the CompileProject tool now to verify the current codebase and provide an engineering assessment.",
-                session: null))
+            const int maxIterations = 5;
+            string prompt = "Start the autonomous correction loop now. Call CompileAndVerify to observe the initial build state, diagnose defects, apply fixes, and iterate until 0 errors and 0 warnings are achieved.";
+
+            while (workspace.IterationCount < maxIterations && !workspace.IsClean)
             {
-                if (!string.IsNullOrEmpty(update.Text))
+                int currentLoop = Math.Max(1, workspace.IterationCount == 0 ? 1 : workspace.IterationCount + 1);
+                ConsoleLogger.LlmReasoning(currentLoop, $"[Loop #{currentLoop}] Autonomous Agent reasoning and executing corrective action...");
+
+                await foreach (var update in agent.RunStreamingAsync(prompt, session: null))
                 {
-                    ConsoleLogger.StreamToken(update.Text);
+                    if (!string.IsNullOrEmpty(update.Text))
+                    {
+                        ConsoleLogger.StreamToken(update.Text);
+                    }
                 }
+
+                if (workspace.IsClean)
+                {
+                    break;
+                }
+
+                int nextLoop = workspace.IterationCount + 1;
+                prompt = $"[Loop #{nextLoop}] Continue autonomous loop. Inspect the latest compiler output with CompileAndVerify, resolve any remaining warnings or test failures using ApplyCodeFix, and verify until clean.";
+                ConsoleLogger.Pause(800);
             }
 
+            int totalIterations = Math.Max(1, workspace.IterationCount);
             ConsoleLogger.BlankLine();
             ConsoleLogger.BlankLine();
-            ConsoleLogger.Success("✓ Loop converged: Autonomous verification cycle completed successfully!");
+            ConsoleLogger.Success($"✓ Loop converged: Autonomous verification cycle completed successfully in {totalIterations} iterations!");
         }
         catch (Exception ex)
         {
             ConsoleLogger.BlankLine();
             ConsoleLogger.SecurityWarning($"LLM invocation encountered an issue: {ex.Message}");
-            ConsoleLogger.Info("Executing direct live compiler verification fallback...");
-            await RunLiveBuildVerificationAsync();
         }
 
         ConsoleLogger.Pause(500);
-    }
-
-    // Bound to the CompileProject tool: invokes the real dotnet build and returns
-    // the raw diagnostics to the agent so it can decide what to fix next.
-    private static async Task<string> ExecuteLiveBuildCheckAsync(string? context)
-    {
-        ConsoleLogger.BlankLine();
-        ConsoleLogger.ToolCall(s_iteration, $"Executing live tool [CompileProject] (Iteration #{s_iteration})...");
-        
-        var buildResult = await s_terminalTool.RunBuildVerificationAsync();
-        
-        ConsoleLogger.Observation(s_iteration++, $"Compiler Output received ({buildResult.Split('\n').Length} lines)");
-        ConsoleLogger.BlankLine();
-
-        return buildResult;
-    }
-
-    // Direct (no-agent) fallback used when the LLM is unavailable: one plain build
-    // verification with no correction loop.
-    private static async Task RunLiveBuildVerificationAsync()
-    {
-        ConsoleLogger.ToolCall(1, "Invoking live TerminalExecutionTool (dotnet build)...");
-        var result = await s_terminalTool.RunBuildVerificationAsync();
-        ConsoleLogger.Observation(1, result);
-        ConsoleLogger.BlankLine();
-        ConsoleLogger.Success("✓ Live build verification completed!");
     }
 }
