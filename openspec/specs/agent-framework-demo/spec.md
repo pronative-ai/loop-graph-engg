@@ -116,7 +116,12 @@ The system SHALL demonstrate human-in-the-loop checkpoint via middleware interce
 
 ### Requirement: Centralized console logging
 
-The system SHALL use a ConsoleLogger class for all output formatting.
+The system SHALL use a ConsoleLogger class for all output formatting, brand presentation, and readable color contrast.
+
+#### Scenario: Brand banner display
+
+- **WHEN** the application starts
+- **THEN** the system displays a prominent, large-font brand banner (`pronative.ai`) in bright Green (`ConsoleColor.Green`)
 
 #### Scenario: No raw Console.WriteLine
 
@@ -126,7 +131,7 @@ The system SHALL use a ConsoleLogger class for all output formatting.
 #### Scenario: Color-coded output
 
 - **WHEN** logs are displayed
-- **THEN** they use appropriate colors: Magenta for graph borders, Yellow for loop borders, Blue for LLM reasoning, Cyan for tool calls, DarkGray for observations, DarkRed for security warnings
+- **THEN** they use high-readability colors: Green for brand banner & success, Magenta for graph borders, Yellow for loop borders, Blue for LLM reasoning, Cyan for tool calls, Gray for observations, and DarkRed for security warnings
 
 #### Scenario: Timing delays
 

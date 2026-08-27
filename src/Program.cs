@@ -16,17 +16,12 @@ internal static class Program
 
     static async Task Main(string[] args)
     {
-
-        ConsoleLogger.Info("=======================================================================");
-        ConsoleLogger.Info("|                   pronative.ai                                      |");
-        ConsoleLogger.Info("=======================================================================");
-
-        ConsoleLogger.Info("=== Loop Engineering vs Graph Engineering (Orchestration) ===");
-        ConsoleLogger.Info("Initializing environment ...");
-        ConsoleLogger.Pause(2000);
+        ConsoleLogger.BrandBanner();
+        ConsoleLogger.Info("Initializing agentic runtime environment...");
+        ConsoleLogger.Pause(1000);
 
         // Gateway setup is best-effort: if the .env or credentials are missing,
-        // we log a warning and keep going in deterministic (offline) mode.
+        // we log a warning and keep going in direct execution mode.
         try
         {
             // Load .env values first, then construct the single shared chat client.
@@ -51,14 +46,14 @@ internal static class Program
         while (true)
         {
             ConsoleLogger.BlankLine();
-            ConsoleLogger.Info("Select a walkthrough to run:");
-            ConsoleLogger.Info("  1. Loop Engineering Walkthrough");
-            ConsoleLogger.Info("  2. Graph Engineering Walkthrough");
-            // ConsoleLogger.Info("  3. Governance Middleware Walkthrough");
-            // ConsoleLogger.Info("  4. Run All Walkthroughs");
-            ConsoleLogger.Info("  3. Exit");
+            ConsoleLogger.Highlight("=== Select an Agentic Walkthrough ===");
+            ConsoleLogger.MenuOption("1", "Loop Engineering Walkthrough (Iterative Self-Correction)");
+            ConsoleLogger.MenuOption("2", "Graph Engineering Walkthrough (DAG Multi-Agent Routing)");
+            ConsoleLogger.MenuOption("3", "Governance Middleware Walkthrough (Human Checkpoint Guardrail)");
+            ConsoleLogger.MenuOption("4", "Run All Walkthroughs Sequentially");
+            ConsoleLogger.MenuOption("5", "Exit");
             ConsoleLogger.BlankLine();
-            Console.Write("Enter your choice (1-3): ");
+            ConsoleLogger.StreamToken("Enter your choice (1-5): ", ConsoleColor.Yellow);
 
             var choice = Console.ReadLine();
             ConsoleLogger.BlankLine();
@@ -71,17 +66,17 @@ internal static class Program
                 case "2":
                     await GraphWorkflowWalkthrough.RunAsync(s_chatClient);
                     break;
-                // case "3":
-                //     await MiddlewareGuardrail.RunWithGuardrailAsync(s_chatClient);
-                //     break;
-                // case "4":
-                //     await RunAllWalkthroughs();
-                //     break;
                 case "3":
-                    ConsoleLogger.Success("Goodbye!");
+                    await MiddlewareGuardrail.RunWithGuardrailAsync(s_chatClient);
+                    break;
+                case "4":
+                    await RunAllWalkthroughs();
+                    break;
+                case "5":
+                    ConsoleLogger.Success("Thank you for exploring AI Agent Workflows with pronative.ai. Goodbye!");
                     return;
                 default:
-                    ConsoleLogger.Info("Invalid choice. Please enter 1-5.");
+                    ConsoleLogger.SecurityWarning("Invalid choice. Please enter 1-5.");
                     break;
             }
         }

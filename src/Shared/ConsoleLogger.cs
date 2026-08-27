@@ -6,6 +6,31 @@ namespace AgenticWorkflowConsole.Shared;
 // presentation reads as a scripted walkthrough.
 public static class ConsoleLogger
 {
+    /// <summary>
+    /// Displays a prominent, large ASCII brand banner in bright green upon application startup.
+    /// </summary>
+    public static void BrandBanner()
+    {
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine("""
+========================================================================================================
+  ██████╗ ██████╗  ██████╗ ███╗   ██╗ █████╗ ████████╗██╗██╗   ██╗███████╗     █████╗ ██╗
+  ██╔══██╗██╔══██╗██╔═══██╗████╗  ██║██╔══██╗╚══██╔══╝██║██║   ██║██╔════╝    ██╔══██╗██║
+  ██████╔╝██████╔╝██║   ██║██╔██╗ ██║███████║   ██║   ██║██║   ██║█████╗      ███████║██║
+  ██╔═══╝ ██╔══██╗██║   ██║██║╚██╗██║██╔══██║   ██║   ██║╚██╗ ██╔╝██╔══╝      ██╔══██║██║
+  ██║     ██║  ██║╚██████╔╝██║ ╚████║██║  ██║   ██║   ██║ ╚████╔╝ ███████╗██╗██║  ██║██║
+  ╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═══╝  ╚══════╝╚═╝╚═╝  ╚═╝╚═╝
+========================================================================================================
+                 ⚡ AI AGENTIC WORKFLOWS: LOOP VS GRAPH ENGINEERING (MAF) ⚡
+""");
+        Console.ResetColor();
+    }
+
+    public static void SectionHeader(string title)
+    {
+        WriteColor($"\n>>> {title} <<<", ConsoleColor.Yellow);
+    }
+
     public static void GraphBorder(string message)
     {
         WriteColor($"[===] {message} [===]", ConsoleColor.Magenta);
@@ -28,7 +53,7 @@ public static class ConsoleLogger
 
     public static void Observation(int iteration, string message)
     {
-        WriteColor($"[Loop #{iteration}] [OBSERVATION] {message}", ConsoleColor.DarkGray);
+        WriteColor($"[Loop #{iteration}] [OBSERVATION] {message}", ConsoleColor.Gray);
     }
 
     public static void Arrow(string from, string to)
@@ -61,6 +86,21 @@ public static class ConsoleLogger
     public static void Info(string message)
     {
         WriteColor(message, ConsoleColor.White);
+    }
+
+    public static void Highlight(string message)
+    {
+        WriteColor(message, ConsoleColor.Cyan);
+    }
+
+    public static void MenuOption(string key, string title)
+    {
+        var prev = Console.ForegroundColor;
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.Write($"  [{key}] ");
+        Console.ForegroundColor = ConsoleColor.White;
+        Console.WriteLine(title);
+        Console.ForegroundColor = prev;
     }
 
     public static void StreamToken(string text, ConsoleColor color = ConsoleColor.White)
