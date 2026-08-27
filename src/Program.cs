@@ -25,7 +25,7 @@ internal static class Program
 
         // Initialize OpenTelemetry distributed tracing with Langfuse export
         using var tracerProvider = TelemetryConfiguration.InitializeTracerProvider();
-        var otlpEndpoint = TelemetryConfiguration.LoadOtlpEndpoint();
+        var otlpEndpoint = TelemetryConfiguration.LoadOtlpTraceEndpoint();
         ConsoleLogger.Success($"[MONITORING] OpenTelemetry trace export target -> {otlpEndpoint}");
 
         // Gateway setup is best-effort: if credentials are missing, we log a note and proceed
@@ -37,6 +37,14 @@ internal static class Program
 
             ConsoleLogger.Success($"[GATEWAY] Connected to: {gatewayUrl}");
             ConsoleLogger.Success($"[MODEL] Using: {modelName}");
+
+            using (var startupSpan = TelemetryConfiguration.ActivitySource.StartActivity("Runtime.Startup"))
+            {
+                startupSpan?.SetTag("service.name", TelemetryConfiguration.LoadServiceName());
+                startupSpan?.SetTag("model.name", modelName);
+                startupSpan?.SetTag("gateway.url", gatewayUrl);
+            }
+            TelemetryConfiguration.Flush();
         }
         catch (Exception ex)
         {
@@ -70,26 +78,31 @@ internal static class Program
                     {
                         await LoopAgentWalkthrough.RunAsync(s_chatClient);
                     }
+                    TelemetryConfiguration.Flush();
                     break;
                 case "2":
                     using (TelemetryConfiguration.ActivitySource.StartActivity("Walkthrough.GraphEngineering"))
                     {
                         await GraphWorkflowWalkthrough.RunAsync(s_chatClient);
                     }
+                    TelemetryConfiguration.Flush();
                     break;
                 case "3":
                     using (TelemetryConfiguration.ActivitySource.StartActivity("Walkthrough.GovernanceMiddleware"))
                     {
                         await MiddlewareGuardrail.RunWithGuardrailAsync(s_chatClient);
                     }
+                    TelemetryConfiguration.Flush();
                     break;
                 case "4":
                     using (TelemetryConfiguration.ActivitySource.StartActivity("Walkthrough.RunAll"))
                     {
                         await RunAllWalkthroughs();
                     }
+                    TelemetryConfiguration.Flush();
                     break;
                 case "5":
+                    TelemetryConfiguration.Flush();
                     ConsoleLogger.Success("Thank you for exploring AI Agent Workflows with pronative.ai. Goodbye!");
                     return;
                 default:

@@ -1,3 +1,7 @@
+using AgenticWorkflowConsole.Shared;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+
 namespace AgenticWorkflowConsole.LoopParadigm;
 
 // The Loop paradigm: a single autonomous agent that keeps iterating over the same
@@ -28,7 +32,11 @@ public static class LoopAgentWalkthrough
         var inspectTool = AIFunctionFactory.Create(
             () =>
             {
+                using var activity = TelemetryConfiguration.ActivitySource.StartActivity("Tool.InspectCode");
                 int iter = Math.Max(1, workspace.IterationCount);
+                activity?.SetTag("loop.iteration", iter);
+                activity?.SetTag("tool.name", "InspectCode");
+
                 ConsoleLogger.BlankLine();
                 ConsoleLogger.ToolCall(iter, $"Executing live tool [InspectCode] (Iteration #{iter}) ({workspace.TargetFileName})...");
                 var code = workspace.InspectCode();
@@ -42,7 +50,12 @@ public static class LoopAgentWalkthrough
         var patchTool = AIFunctionFactory.Create(
             (string updatedCode, string explanation) =>
             {
+                using var activity = TelemetryConfiguration.ActivitySource.StartActivity("Tool.ApplyCodeFix");
                 int iter = Math.Max(1, workspace.IterationCount);
+                activity?.SetTag("loop.iteration", iter);
+                activity?.SetTag("tool.name", "ApplyCodeFix");
+                activity?.SetTag("code.explanation", explanation);
+
                 ConsoleLogger.BlankLine();
                 ConsoleLogger.ToolCall(iter, $"Executing live tool [ApplyCodeFix] (Iteration #{iter}) - {explanation}...");
                 var result = workspace.ApplyCodeFix(updatedCode, explanation);
@@ -56,7 +69,11 @@ public static class LoopAgentWalkthrough
         var compileTool = AIFunctionFactory.Create(
             async () =>
             {
+                using var activity = TelemetryConfiguration.ActivitySource.StartActivity("Tool.CompileAndVerify");
                 int iter = workspace.IterationCount + 1;
+                activity?.SetTag("loop.iteration", iter);
+                activity?.SetTag("tool.name", "CompileAndVerify");
+
                 ConsoleLogger.BlankLine();
                 ConsoleLogger.ToolCall(iter, $"Executing live tool [CompileAndVerify] (Iteration #{iter})...");
                 var output = await workspace.CompileAndVerifyAsync(baseClient);
@@ -98,6 +115,10 @@ public static class LoopAgentWalkthrough
             while (workspace.IterationCount < maxIterations && !workspace.IsClean)
             {
                 int currentLoop = Math.Max(1, workspace.IterationCount == 0 ? 1 : workspace.IterationCount + 1);
+                using var loopActivity = TelemetryConfiguration.ActivitySource.StartActivity($"Loop.Iteration.{currentLoop}");
+                loopActivity?.SetTag("loop.iteration", currentLoop);
+                loopActivity?.SetTag("gen_ai.agent.name", "LoopDevAgent");
+
                 ConsoleLogger.LlmReasoning(currentLoop, $"[Loop #{currentLoop}] Autonomous Agent reasoning and executing corrective action...");
 
                 await foreach (var update in agent.RunStreamingAsync(prompt, session: null))
@@ -127,6 +148,10 @@ public static class LoopAgentWalkthrough
         {
             ConsoleLogger.BlankLine();
             ConsoleLogger.SecurityWarning($"LLM invocation encountered an issue: {ex.Message}");
+        }
+        finally
+        {
+            TelemetryConfiguration.Flush();
         }
 
         ConsoleLogger.Pause(500);

@@ -165,6 +165,10 @@ public class AgenticWorkflow<TState>
                 SessionId = _sessionId
             };
 
+            using var nodeActivity = TelemetryConfiguration.ActivitySource.StartActivity($"Workflow.Node.{currentNodeName}");
+            nodeActivity?.SetTag("workflow.session_id", _sessionId);
+            nodeActivity?.SetTag("workflow.node_name", currentNodeName);
+
             await ExecuteMiddlewarePipeline(context, async () =>
             {
                 if (currentNode.ExecuteAsync != null)
@@ -207,6 +211,10 @@ public class AgenticWorkflow<TState>
                 var parallelTasks = parallelEdges.Select(async edge =>
                 {
                     var parallelNodeName = edge.Target;
+                    using var parallelActivity = TelemetryConfiguration.ActivitySource.StartActivity($"Workflow.Node.{parallelNodeName}");
+                    parallelActivity?.SetTag("workflow.session_id", _sessionId);
+                    parallelActivity?.SetTag("workflow.node_name", parallelNodeName);
+
                     var branchPrefix = (Interlocked.Increment(ref currentIdx) == targetCount) ? "└──" : "├──";
                     ConsoleLogger.ParallelBranch(branchPrefix, $"Executing parallel node [{parallelNodeName}]");
 

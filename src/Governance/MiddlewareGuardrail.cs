@@ -1,3 +1,5 @@
+using AgenticWorkflowConsole.Shared;
+
 namespace AgenticWorkflowConsole.Governance;
 
 // Governance walkthrough entry point: shows how to inject a human-authorization gate
@@ -126,6 +128,10 @@ public static class MiddlewareGuardrail
         {
             ConsoleLogger.BlankLine();
             ConsoleLogger.SecurityWarning($"Workflow encountered unexpected exception: {ex.Message}");
+        }
+        finally
+        {
+            TelemetryConfiguration.Flush();
         }
 
         ConsoleLogger.Pause(500);

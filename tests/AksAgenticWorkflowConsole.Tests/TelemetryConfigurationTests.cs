@@ -1,4 +1,4 @@
-using System.Text;
+using System.Diagnostics;
 using AgenticWorkflowConsole.Shared;
 using Xunit;
 
@@ -6,6 +6,16 @@ namespace AksAgenticWorkflowConsole.Tests;
 
 public class TelemetryConfigurationTests
 {
+    [Fact]
+    public void CleanEnvValue_StripsQuotesAndWhitespace()
+    {
+        Assert.Null(TelemetryConfiguration.CleanEnvValue(null));
+        Assert.Null(TelemetryConfiguration.CleanEnvValue("   "));
+        Assert.Equal("value", TelemetryConfiguration.CleanEnvValue("\"value\""));
+        Assert.Equal("value", TelemetryConfiguration.CleanEnvValue("'value'"));
+        Assert.Equal("value", TelemetryConfiguration.CleanEnvValue("  \"value\"  "));
+    }
+
     [Fact]
     public void LoadServiceName_Default_ReturnsLoopVsGraph()
     {
@@ -22,12 +32,12 @@ public class TelemetryConfigurationTests
     }
 
     [Fact]
-    public void LoadServiceName_Custom_ReturnsConfiguredName()
+    public void LoadServiceName_CustomWithQuotes_ReturnsStrippedName()
     {
         var original = Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME");
         try
         {
-            Environment.SetEnvironmentVariable("OTEL_SERVICE_NAME", "custom-agent-service");
+            Environment.SetEnvironmentVariable("OTEL_SERVICE_NAME", "\"custom-agent-service\"");
             Assert.Equal("custom-agent-service", TelemetryConfiguration.LoadServiceName());
         }
         finally
@@ -42,7 +52,7 @@ public class TelemetryConfigurationTests
         var original = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
         try
         {
-            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT", "https://ingest.signoz.io:443");
+            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT", "\"https://ingest.signoz.io:443\"");
             Assert.Equal("https://ingest.signoz.io:443", TelemetryConfiguration.LoadOtlpEndpoint());
         }
         finally
@@ -52,21 +62,20 @@ public class TelemetryConfigurationTests
     }
 
     [Fact]
-    public void LoadOtlpEndpoint_FromLangfuseHost_AppendsOtelRoute()
+    public void LoadOtlpTraceEndpoint_NormalizesWithOrWithoutTrailingV1Traces()
     {
-        var originalOtel = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
-        var originalHost = Environment.GetEnvironmentVariable("LANGFUSE_HOST");
+        var original = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
         try
         {
-            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT", null);
-            Environment.SetEnvironmentVariable("LANGFUSE_HOST", "https://dev-monitoring.pronative.ai/");
+            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT", "https://dev-monitoring.pronative.ai/api/public/otel/v1/traces");
+            Assert.Equal("https://dev-monitoring.pronative.ai/api/public/otel/v1/traces", TelemetryConfiguration.LoadOtlpTraceEndpoint());
 
-            Assert.Equal("https://dev-monitoring.pronative.ai/api/public/otel", TelemetryConfiguration.LoadOtlpEndpoint());
+            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT", "https://dev-monitoring.pronative.ai/api/public/otel");
+            Assert.Equal("https://dev-monitoring.pronative.ai/api/public/otel/v1/traces", TelemetryConfiguration.LoadOtlpTraceEndpoint());
         }
         finally
         {
-            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT", originalOtel);
-            Environment.SetEnvironmentVariable("LANGFUSE_HOST", originalHost);
+            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT", original);
         }
     }
 
@@ -74,28 +83,54 @@ public class TelemetryConfigurationTests
     public void LoadOtlpEndpoint_Default_ReturnsPronativeEndpoint()
     {
         var originalOtel = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
-        var originalHost = Environment.GetEnvironmentVariable("LANGFUSE_HOST");
         try
         {
             Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT", null);
-            Environment.SetEnvironmentVariable("LANGFUSE_HOST", null);
-
             Assert.Equal("https://dev-monitoring.pronative.ai/api/public/otel", TelemetryConfiguration.LoadOtlpEndpoint());
         }
         finally
         {
             Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT", originalOtel);
-            Environment.SetEnvironmentVariable("LANGFUSE_HOST", originalHost);
         }
     }
 
     [Fact]
-    public void LoadAuthHeaders_ExplicitHeaders_ReturnsConfiguredHeaders()
+    public void LoadOtlpTraceEndpoint_AppendsV1TracesWhenMissing()
+    {
+        var originalOtel = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
+        try
+        {
+            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT", "https://dev-monitoring.pronative.ai/api/public/otel");
+            Assert.Equal("https://dev-monitoring.pronative.ai/api/public/otel/v1/traces", TelemetryConfiguration.LoadOtlpTraceEndpoint());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT", originalOtel);
+        }
+    }
+
+    [Fact]
+    public void LoadAuthHeaders_QuotedHeaders_StripsQuotesAndAttachesIngestionVersion()
     {
         var original = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_HEADERS");
         try
         {
-            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_HEADERS", "signoz-access-token=token123");
+            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_HEADERS", "\"Authorization=Basic dGVzdDp0ZXN0\"");
+            Assert.Equal("Authorization=Basic dGVzdDp0ZXN0,x-langfuse-ingestion-version=4", TelemetryConfiguration.LoadAuthHeaders());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_HEADERS", original);
+        }
+    }
+
+    [Fact]
+    public void LoadAuthHeaders_NonBasicHeaders_PreservedAsIs()
+    {
+        var original = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_HEADERS");
+        try
+        {
+            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_HEADERS", "'signoz-access-token=token123'");
             Assert.Equal("signoz-access-token=token123", TelemetryConfiguration.LoadAuthHeaders());
         }
         finally
@@ -105,32 +140,53 @@ public class TelemetryConfigurationTests
     }
 
     [Fact]
-    public void LoadAuthHeaders_FromLangfuseKeys_BuildsBasicAuth()
-    {
-        var originalHeaders = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_HEADERS");
-        var originalPk = Environment.GetEnvironmentVariable("LANGFUSE_PUBLIC_KEY");
-        var originalSk = Environment.GetEnvironmentVariable("LANGFUSE_SECRET_KEY");
-        try
-        {
-            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_HEADERS", null);
-            Environment.SetEnvironmentVariable("LANGFUSE_PUBLIC_KEY", "pk-test");
-            Environment.SetEnvironmentVariable("LANGFUSE_SECRET_KEY", "sk-test");
-
-            var expectedBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes("pk-test:sk-test"));
-            Assert.Equal($"Authorization=Basic {expectedBase64}", TelemetryConfiguration.LoadAuthHeaders());
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("OTEL_EXPORTER_OTLP_HEADERS", originalHeaders);
-            Environment.SetEnvironmentVariable("LANGFUSE_PUBLIC_KEY", originalPk);
-            Environment.SetEnvironmentVariable("LANGFUSE_SECRET_KEY", originalSk);
-        }
-    }
-
-    [Fact]
     public void InitializeTracerProvider_BuildsSuccessfully()
     {
         using var provider = TelemetryConfiguration.InitializeTracerProvider();
         Assert.NotNull(provider);
+    }
+
+    [Fact]
+    public void Flush_DoesNotThrow()
+    {
+        using var provider = TelemetryConfiguration.InitializeTracerProvider();
+        var exception = Record.Exception(() => TelemetryConfiguration.Flush(100));
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void TestOtlpExporterDirectExport()
+    {
+        DotNetEnv.Env.TraversePath().Load();
+        var traceEndpoint = TelemetryConfiguration.LoadOtlpTraceEndpoint();
+        var headers = TelemetryConfiguration.LoadAuthHeaders();
+
+        var options = new OpenTelemetry.Exporter.OtlpExporterOptions
+        {
+            Endpoint = new Uri(traceEndpoint),
+            Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf,
+            Headers = headers
+        };
+
+        var exporter = new OpenTelemetry.Exporter.OtlpTraceExporter(options);
+
+        var activitySource = new ActivitySource("TestDirectExportSource");
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = _ => true,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        using var activity = activitySource.StartActivity("DirectExportVerificationSpan");
+        Assert.NotNull(activity);
+        activity.SetTag("test.key", "test.value");
+        activity.Stop();
+
+        // Export the activity
+        var batch = new OpenTelemetry.Batch<Activity>(new[] { activity }, 1);
+        var result = exporter.Export(batch);
+
+        Assert.Equal(OpenTelemetry.ExportResult.Success, result);
     }
 }

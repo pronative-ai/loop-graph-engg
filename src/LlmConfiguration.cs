@@ -57,7 +57,10 @@ public static class LlmConfiguration
         var openAiClient = new OpenAIClient(credential, clientOptions);
         var chatClient = openAiClient.GetChatClient(model);
 
-        return chatClient.AsIChatClient();
+        return chatClient.AsIChatClient()
+            .AsBuilder()
+            .UseOpenTelemetry(sourceName: "Microsoft.Extensions.AI")
+            .Build();
     }
 
     // Lightweight smoke test that round-trips a "Ping" through the live gateway

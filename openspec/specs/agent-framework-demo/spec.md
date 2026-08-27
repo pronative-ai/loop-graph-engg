@@ -152,12 +152,17 @@ The system SHALL initialize OpenTelemetry distributed tracing and export all age
 - **WHEN** the application starts
 - **THEN** the system configures an OpenTelemetry `TracerProvider` subscribing to Microsoft Agent Framework (`Microsoft.Agents.AI.*`), Microsoft Extensions AI (`Microsoft.Extensions.AI.*`), and application activity sources
 
+#### Scenario: ChatClient OpenTelemetry instrumentation
+
+- **WHEN** the `IChatClient` is constructed
+- **THEN** the client is wrapped with `.AsBuilder().UseOpenTelemetry()` so every LLM turn, model request, token metric, and completion automatically generates OpenTelemetry spans
+
 #### Scenario: OTLP trace export
 
 - **WHEN** traces and spans are recorded during agent execution
-- **THEN** the system securely exports spans via OTLP to the configured endpoint (e.g. `https://dev-monitoring.pronative.ai/api/public/otel` or SigNoz)
+- **THEN** the system securely exports spans via OTLP to the configured endpoint (e.g. `https://dev-monitoring.pronative.ai/api/public/otel` or SigNoz) with required ingestion headers
 
 #### Scenario: Trace lifecycle management
 
 - **WHEN** the application shuts down or completes a walkthrough
-- **THEN** all pending OpenTelemetry trace spans are flushed before process exit
+- **THEN** all pending OpenTelemetry trace spans are flushed immediately before moving to the next interaction or process exit

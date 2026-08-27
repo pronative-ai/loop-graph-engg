@@ -1,3 +1,5 @@
+using AgenticWorkflowConsole.Shared;
+
 namespace AgenticWorkflowConsole.GraphParadigm;
 
 // The Graph paradigm: a directed acyclic graph (DAG) of specialized nodes that run
@@ -32,6 +34,10 @@ public static class GraphWorkflowWalkthrough
             ConsoleLogger.SecurityWarning($"Graph LLM execution error: {ex.Message}");
             ConsoleLogger.Info("Executing deterministic graph fallback...");
             await RunDeterministicGraphAsync();
+        }
+        finally
+        {
+            TelemetryConfiguration.Flush();
         }
     }
 
