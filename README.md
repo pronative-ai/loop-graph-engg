@@ -1,19 +1,22 @@
-# AKS Agentic Workflow Console
+# AI Agentic Workflows: Loop vs Graph Engineering (MAF)
 
-A .NET 10 console application demonstrating agentic workflow orchestration using Microsoft Agent Framework (MAF). This application implements a multi-agent coding workflow with backend and frontend AI agents, orchestrated through an agentic graph with parallel execution, conditional routing, and middleware guardrails.
+A .NET 10 console application demonstrating agentic workflow orchestration built on **Microsoft Agent Framework (MAF)**. The app hosts three interactive walkthroughs - Loop Engineering, Graph Engineering, and Governance Middleware - that contrast iterative self-correction against directed-acyclic graph (DAG) multi-agent routing, with human-in-the-loop guardrails and OpenTelemetry distributed tracing.
 
 ## Features
 
-- **Multi-Agent Orchestration**: Backend and Frontend AI agents working in parallel
-- **Agentic Graph Engine**: Directed workflow with nodes, edges, and conditional routing
-- **Middleware Guardrails**: Human checkpoint verification before deployment
-- **AKS Agent Gateway Integration**: Configurable LLM endpoint via environment variables
-- **Parallel Execution**: Concurrent agent operations with synchronization
+- **Loop Engineering Walkthrough**: Uses the official `Microsoft.Agents.AI.LoopAgent` with `LoopEvaluator` and `LoopAgentOptions` to drive an autonomous developer agent that iterates until build diagnostics report `[PASS - VERIFIED]`.
+- **Graph Engineering Walkthrough**: Builds a multi-agent DAG (`Architect` -> parallel `Backend`/`Frontend` -> `Reviewer` -> `Deployment`) using MAF `WorkflowBuilder`, parallel fan-out/fan-in barriers, and conditional edges.
+- **Governance Middleware Walkthrough**: Injects a human-authorization guardrail into the workflow pipeline, blocking the deployment transition until an operator approves.
+- **Live LLM Tools**: Exposes `InspectCode`, `ApplyCodeFix`, and `CompileAndVerify` functions via `AIFunctionFactory`, equipped with OpenTelemetry tracing tags.
+- **Deterministic Fallback**: Walkthroughs run in a simulated mode when no LLM gateway is configured.
+- **OpenTelemetry (OTLP) Distributed Tracing**: Exports traces to any OTLP collector (Langfuse, SigNoz, Jaeger, .NET Aspire).
+- **Subprocess Execution Tool**: `TerminalExecutionTool` runs shell commands (e.g. `dotnet build`) with captured stdout/stderr and exit codes.
+- **Menu-Driven Console**: Select individual walkthroughs or run all sequentially.
 
 ## Prerequisites
 
 - .NET 10 SDK (or later)
-- Access to an AKS agent gateway endpoint
+- Access to an OpenAI-compatible LLM gateway endpoint (e.g. `gateway.pronative.ai`) with an API key
 - Environment variables configured (see below)
 
 ## Quick Start
@@ -33,11 +36,12 @@ Copy the example environment file and fill in your values:
 cp .env.example .env
 ```
 
-Edit `.env` with your AKS agent gateway URL and key:
+Edit `.env` with your gateway URL, API key, and model:
 
 ```env
-AKS_AGENT_GATEWAY_URL=https://your-aks-gateway-url.openai.azure.com/
-AKS_AGENT_GATEWAY_KEY=your-api-key-here
+GATEWAY_URL=https://your-gateway-url.openai.azure.com/
+GATEWAY_KEY=your-api-key-here
+MODEL_NAME=gpt-4o
 ```
 
 ### 3. Build and Run
@@ -62,43 +66,115 @@ dotnet build src/AksAgenticWorkflowConsole.csproj
 dotnet run --project src/AksAgenticWorkflowConsole.csproj
 ```
 
+Once running, choose from the walkthrough menu:
+
+1. **Loop Engineering** - iterative self-correction via official MAF `LoopAgent`
+2. **Graph Engineering** - DAG multi-agent routing
+3. **Governance Middleware** - human checkpoint guardrail
+4. **Run All Walkthroughs** - execute all three sequentially
+5. **Exit**
+
 ## Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `AKS_AGENT_GATEWAY_URL` | Your AKS agent gateway endpoint URL | Yes |
-| `AKS_AGENT_GATEWAY_KEY` | API key for authentication | Yes |
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `GATEWAY_URL` | OpenAI-compatible LLM gateway endpoint URL | Yes | - |
+| `GATEWAY_KEY` | API key for gateway authentication | Yes | - |
+| `MODEL_NAME` | Model to use on the gateway | No | `gpt-4o` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry OTLP collector endpoint | No | `https://dev-monitoring.pronative.ai/api/public/otel` |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Custom headers for the OTLP exporter (e.g. Langfuse Basic auth) | No | - |
+| `OTEL_SERVICE_NAME` | Service name reported to the trace collector | No | `loop-vs-graph` |
+
+Configuration is loaded from a `.env` file (gitignored) or the process environment via `DotNetEnv`.
 
 ## Architecture
 
-The application uses Microsoft Agent Framework (MAF) to orchestrate a workflow graph:
+The app is organized into three paradigms under `src/`, selected from the main menu (`src/Program.cs`).
+
+### Loop Engineering (`LoopParadigm/`)
+
+An autonomous developer agent wrapped by the official MAF `LoopAgent`. It cycles through live tools until the LLM verifier reports a clean build.
 
 ```
-Planner → [BackendCoder, FrontendCoder] → Reviewer → Deployment
+LoopAgent (MAF)
+  │
+  ├──→ InspectCode ─────────────────┐
+  ├──→ ApplyCodeFix ────────────────┤  iterate until
+  └──→ CompileAndVerify ────────────┘  STATUS: [PASS - VERIFIED]
 ```
 
-- **Planner**: Breaks down tasks for parallel execution
-- **BackendCoder**: Handles backend C# development tasks
-- **FrontendCoder**: Handles frontend Blazor development tasks
-- **Reviewer**: Evaluates code quality and approval
-- **Deployment**: Final deployment with human checkpoint verification
+### Graph Engineering (`GraphParadigm/`)
+
+A directed acyclic graph of single-responsibility agents wired through the shared `AgenticWorkflow<TState>` engine (built on MAF `WorkflowBuilder` + `InProcessExecution`).
+
+```
+ArchitectNode
+   │
+   ├── [parallel split] ──► BackendCoderNode ──┐
+   └──────────────────────► FrontendCoderNode ─┤
+                                               ▼
+                                      (parallel join) ReviewerNode
+                                               │
+                         ── conditional edge: state.IsApproved ──
+                                               ▼
+                                        DeploymentNode
+```
+
+### Governance Middleware (`Governance/`)
+
+Demonstrates injecting a human-in-the-loop guardrail via `UseMiddleware`. Execution pauses at the transition to `DeploymentNode` and requires operator approval (or `deny`) before continuing.
+
+```
+PrepareReleaseNode ──► [MIDDLEWARE: Human Approval Checkpoint] ──► DeploymentNode
+```
+
+### Shared Components (`Shared/`)
+
+- `ConsoleLogger` - centralized console formatting and presentation helpers
+- `TelemetryConfiguration` - OpenTelemetry `TracerProvider` + OTLP exporter setup
+- `WorkflowGraph.cs` - `AgenticWorkflow<TState>` engine: nodes, edges, parallel splits/joins, conditional edges, middleware pipeline
+- `CodingProjectState` - blackboard-state container shared across all graph nodes
+- `HumanCheckpointStore` - async approval/rejection tracker for human-in-the-loop gates
+- `TerminalExecutionTool` - sandboxed subprocess execution and build verification
+- `LlmConfiguration` - builds the MAF `IChatClient` from gateway environment variables
 
 ## Project Structure
 
 ```
 LoopAgent/
-├── src/
-│   ├── AksAgenticWorkflowConsole.csproj
-│   ├── Program.cs
-│   ├── CodingProjectState.cs
-│   ├── TerminalExecutionTool.cs
-│   ├── HumanCheckpointStore.cs
-│   └── WorkflowGuardrails.cs
+├── LoopAgent.slnx
+├── Makefile
 ├── .env.example
 ├── .gitignore
 ├── .aiignore
-├── Makefile
-└── README.md
+├── README.md
+├── src/
+│   ├── AksAgenticWorkflowConsole.csproj
+│   ├── Program.cs
+│   ├── GlobalUsings.cs
+│   ├── LlmConfiguration.cs
+│   ├── WorkflowGraph.cs
+│   ├── CodingProjectState.cs
+│   ├── HumanCheckpointStore.cs
+│   ├── TerminalExecutionTool.cs
+│   ├── Governance/
+│   │   └── MiddlewareGuardrail.cs
+│   ├── GraphParadigm/
+│   │   └── GraphWorkflowWalkthrough.cs
+│   ├── LoopParadigm/
+│   │   ├── LoopAgentWalkthrough.cs
+│   │   └── LoopDiagnosticWorkspace.cs
+│   └── Shared/
+│       ├── ConsoleLogger.cs
+│       └── TelemetryConfiguration.cs
+└── tests/
+    └── AksAgenticWorkflowConsole.Tests/
+        ├── AksAgenticWorkflowConsole.Tests.csproj
+        ├── LlmConfigurationTests.cs
+        ├── LoopDiagnosticTests.cs
+        ├── StateAndToolTests.cs
+        ├── TelemetryConfigurationTests.cs
+        └── WorkflowGraphTests.cs
 ```
 
 ## Make Targets
@@ -124,10 +200,18 @@ LoopAgent/
 make build
 ```
 
-### Running
+### Running Tests
+
+The project uses xUnit (via `Microsoft.NET.Test.Sdk`). Run all tests with:
 
 ```bash
-make run
+make test
+```
+
+or directly:
+
+```bash
+dotnet test tests/AksAgenticWorkflowConsole.Tests/AksAgenticWorkflowConsole.Tests.csproj
 ```
 
 ### Cleaning
@@ -138,15 +222,13 @@ make clean
 
 ## Configuration
 
-The application reads configuration from environment variables. For development, you can use a `.env` file (which is gitignored for security).
-
-See `.env.example` for all available configuration options.
+The application reads configuration from environment variables (or a `.env` file, which is gitignored for security). See `.env.example` for all available options.
 
 ## Security Notes
 
 - Never commit `.env` files containing real credentials
-- Use Azure Key Vault or similar for production secrets
-- The `.gitignore` excludes `.env` files by default
+- Use a secrets manager (e.g. Azure Key Vault) for production secrets
+- The `.gitignore` and `.aiignore` exclude `.env` files by default
 
 ## Contributing
 
@@ -156,12 +238,9 @@ See `.env.example` for all available configuration options.
 4. Run tests (`make test`)
 5. Submit a pull request
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
 ## Support
 
 For issues and questions:
-- Check the [Issues](../../issues) page
-- Review the Microsoft Agent Framework documentation
+- Check the repository issues page
+- Review the [Microsoft Agent Framework](https://learn.microsoft.com/en-us/agent-framework/) documentation
+- See the [MAF LoopAgent documentation](https://learn.microsoft.com/en-us/agent-framework/agents/looping?pivots=programming-language-csharp)
