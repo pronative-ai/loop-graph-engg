@@ -127,4 +127,20 @@ public class LoopDiagnosticWorkspace
             return $"[COMPILER ENGINE ERROR] Verification failed to execute: {ex.Message}";
         }
     }
+
+    /// <summary>
+    /// Sets the cleanliness status directly for test automation or state transitions.
+    /// </summary>
+    public void SetCleanStatus(bool isClean)
+    {
+        IsClean = isClean;
+    }
+
+    /// <summary>
+    /// Manually increments iteration count for testing.
+    /// </summary>
+    public void IncrementIteration()
+    {
+        IterationCount++;
+    }
 }

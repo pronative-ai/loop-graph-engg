@@ -5,20 +5,18 @@ using Microsoft.Extensions.AI;
 
 namespace AgenticWorkflowConsole.LoopParadigm;
 
-// The Loop paradigm: a single autonomous agent that keeps iterating over the same
-// problem (observe real-time LLM compiler diagnostics -> inspect -> apply patch -> re-verify)
-// under its own direction until it converges cleanly.
-// In this walkthrough, the agent and the compiler evaluator perform authentic, live LLM
-// interactions with progressive iteration tracking:
-//   Loop #1: Live compiler engine evaluates code -> detects errors (CS0103, CS1002).
-//   Loop #2: Dev agent applies syntax patch -> compiler engine detects warnings (CS8602 nullability).
-//   Loop #3: Dev agent applies null-safety & defensive guards -> compiler engine verifies 0 errors & 0 warnings.
+/// <summary>
+/// HIGHLIGHT: Microsoft Agent Framework (MAF) Official LoopAgent Walkthrough
+/// Demonstrates the official <see cref="Microsoft.Agents.AI.LoopAgent"/> from Microsoft Agent Framework
+/// as documented in https://learn.microsoft.com/en-us/agent-framework/agents/looping?pivots=programming-language-csharp
+/// wrapping an autonomous developer <see cref="ChatClientAgent"/> with a <see cref="LoopEvaluator"/> and <see cref="LoopAgentOptions"/>.
+/// </summary>
 public static class LoopAgentWalkthrough
 {
     public static async Task RunAsync(IChatClient? baseClient)
     {
         ConsoleLogger.LoopBorder("LOOP ENGINEERING WALKTHROUGH");
-        ConsoleLogger.Info("Demonstrating autonomous iterative correction via ChatClientAgent with realtime LLM verification");
+        ConsoleLogger.Info("Demonstrating autonomous iterative correction via official Microsoft Agent Framework (MAF) LoopAgent");
         ConsoleLogger.Pause(1000);
 
         var workspace = new LoopDiagnosticWorkspace();
@@ -49,7 +47,7 @@ public static class LoopAgentWalkthrough
                 ConsoleLogger.BlankLine();
                 ConsoleLogger.ToolCall(iter, $"Executing live tool [InspectCode] (Iteration #{iter}) ({workspace.TargetFileName})...");
                 var code = workspace.InspectCode();
-                
+
                 activity?.SetTag("gen_ai.tool.output", code);
                 activity?.SetTag("gen_ai.tool.is_success", true);
 
@@ -113,12 +111,12 @@ public static class LoopAgentWalkthrough
             "Compiles and validates the C# workspace using the real-time .NET compiler and static analysis engine.");
 
         /* -------------------------------------------------------------------------
-         * STAGE 2: ChatClientAgent Instantiation
+         * STAGE 2: Base AIAgent Definition
          * Defines the autonomous agent persona, operational instructions, and tool bindings.
          * ------------------------------------------------------------------------- */
 
         // HIGHLIGHT: Autonomous ChatClientAgent Definition - Instantiates single-agent loop engineer armed with tools and diagnostic protocol
-        var agent = new ChatClientAgent(
+        var baseAgent = new ChatClientAgent(
             chatClient: baseClient,
             instructions: """
                 You are an autonomous senior .NET compiler engineer and Loop Agent.
@@ -130,7 +128,7 @@ public static class LoopAgentWalkthrough
                 3. Call ApplyCodeFix with your complete updated C# code and an explanation.
                 4. Call CompileAndVerify to re-test the updated code.
                 5. If any errors or warnings remain, repeat the loop.
-                6. When the build succeeds with 0 errors and 0 warnings (STATUS: [PASS - VERIFIED]), announce convergence.
+                6. When the build succeeds with 0 errors and 0 warnings (STATUS: [PASS - VERIFIED]), announce convergence with STATUS: [PASS - VERIFIED].
                 
                 Always be concise, precise, and professional.
                 """,
@@ -138,58 +136,63 @@ public static class LoopAgentWalkthrough
             description: "An autonomous developer agent executing iterative build diagnostics and correction",
             tools: [inspectTool, patchTool, compileTool]);
 
-        ConsoleLogger.Info("[LoopDevAgent] Starting autonomous correction loop with live tool invocation...");
+        /* -------------------------------------------------------------------------
+         * STAGE 3: Microsoft Agent Framework (MAF) LoopAgent Composition
+         * Wraps base agent with official LoopAgent, LoopEvaluator, and LoopAgentOptions
+         * as specified in https://learn.microsoft.com/en-us/agent-framework/agents/looping
+         * ------------------------------------------------------------------------- */
+
+        // HIGHLIGHT: MAF LoopEvaluator - Evaluates completion criteria and supplies feedback for the next loop iteration
+        var loopEvaluator = new DelegateLoopEvaluator((context, cancellationToken) =>
+        {
+            if (workspace.IsClean)
+            {
+                return ValueTask.FromResult(LoopEvaluation.Stop());
+            }
+
+            int nextIteration = workspace.IterationCount + 1;
+            ConsoleLogger.Pause(800);
+            return ValueTask.FromResult(LoopEvaluation.Continue(
+                $"[Loop #{nextIteration}] The build is not clean yet. Inspect the latest compiler output with CompileAndVerify, apply fixes using ApplyCodeFix, and verify until 0 errors and 0 warnings are achieved."));
+        });
+
+        // HIGHLIGHT: MAF Official LoopAgent - Directly instantiates Microsoft.Agents.AI.LoopAgent with bounded max iterations
+        AIAgent loopAgent = new LoopAgent(
+            baseAgent,
+            loopEvaluator,
+            new LoopAgentOptions
+            {
+                MaxIterations = 5
+            });
+
+        ConsoleLogger.Info("[LoopAgent] Executing official Microsoft.Agents.AI.LoopAgent streaming iteration run...");
         ConsoleLogger.BlankLine();
 
         /* -------------------------------------------------------------------------
-         * STAGE 3: Autonomous Feedback Iteration Loop
-         * Repeatedly invokes the agent, streaming its reasoning and tool executions
-         * until the workspace signals clean compilation or max iterations reached.
+         * STAGE 4: Stream Official MAF LoopAgent Execution
+         * Invokes the LoopAgent, streaming token reasoning and tool invocations across all iterations.
          * ------------------------------------------------------------------------- */
 
-        // HIGHLIGHT: Autonomous Feedback Iteration Loop - Streams reasoning and tool execution iteratively until 0 errors / 0 warnings convergence
         try
         {
-            const int maxIterations = 5;
-            string prompt = "Start the autonomous correction loop now. Call CompileAndVerify to observe the initial build state, diagnose defects, apply fixes, and iterate until 0 errors and 0 warnings are achieved.";
+            using var loopRunActivity = TelemetryConfiguration.ActivitySource.StartActivity("MAF.LoopAgent.Run");
+            loopRunActivity?.SetTag("gen_ai.agent.name", "LoopAgent");
+            loopRunActivity?.SetTag("gen_ai.base_agent", "LoopDevAgent");
 
-            while (workspace.IterationCount < maxIterations && !workspace.IsClean)
+            string initialPrompt = "Start the autonomous correction loop now. Call CompileAndVerify to observe the initial build state, diagnose defects, apply fixes, and iterate until 0 errors and 0 warnings are achieved.";
+
+            await foreach (var update in loopAgent.RunStreamingAsync(initialPrompt, session: null))
             {
-                int currentLoop = Math.Max(1, workspace.IterationCount == 0 ? 1 : workspace.IterationCount + 1);
-                using var loopActivity = TelemetryConfiguration.ActivitySource.StartActivity($"Loop.Iteration.{currentLoop}");
-                loopActivity?.SetTag("loop.iteration", currentLoop);
-                loopActivity?.SetTag("gen_ai.agent.name", "LoopDevAgent");
-                loopActivity?.SetTag("gen_ai.prompt", prompt);
-
-                ConsoleLogger.LlmReasoning(currentLoop, $"[Loop #{currentLoop}] Autonomous Agent reasoning and executing corrective action...");
-
-                var responseCollector = new StringBuilder();
-                await foreach (var update in agent.RunStreamingAsync(prompt, session: null))
+                if (!string.IsNullOrEmpty(update.Text))
                 {
-                    if (!string.IsNullOrEmpty(update.Text))
-                    {
-                        ConsoleLogger.StreamToken(update.Text);
-                        responseCollector.Append(update.Text);
-                    }
+                    ConsoleLogger.StreamToken(update.Text);
                 }
-
-                loopActivity?.SetTag("gen_ai.response", responseCollector.ToString());
-                loopActivity?.SetTag("loop.is_clean", workspace.IsClean);
-
-                if (workspace.IsClean)
-                {
-                    break;
-                }
-
-                int nextLoop = workspace.IterationCount + 1;
-                prompt = $"[Loop #{nextLoop}] Continue autonomous loop. Inspect the latest compiler output with CompileAndVerify, resolve any remaining warnings or test failures using ApplyCodeFix, and verify until clean.";
-                ConsoleLogger.Pause(800);
             }
 
             int totalIterations = Math.Max(1, workspace.IterationCount);
             ConsoleLogger.BlankLine();
             ConsoleLogger.BlankLine();
-            ConsoleLogger.Success($"✓ Loop converged: Autonomous verification cycle completed successfully in {totalIterations} iterations!");
+            ConsoleLogger.Success($"✓ Loop converged: Official MAF LoopAgent verification cycle completed in {totalIterations} iterations!");
         }
         catch (Exception ex)
         {

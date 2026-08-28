@@ -1,5 +1,8 @@
 using System.Collections.Concurrent;
 using AgenticWorkflowConsole;
+using AgenticWorkflowConsole.LoopParadigm;
+using Microsoft.Agents.AI.Workflows;
+using Microsoft.Agents.AI.Workflows.InProc;
 using Xunit;
 
 namespace AksAgenticWorkflowConsole.Tests;
@@ -129,5 +132,67 @@ public class WorkflowGraphTests
 
         Assert.Contains("Start", intercepted);
         Assert.Contains("End", intercepted);
+    }
+
+    [Fact]
+    public void BuildMafWorkflow_ProducesValidMafWorkflowInstance()
+    {
+        var workflow = new AgenticWorkflow<CodingProjectState>();
+        workflow.AddInitialNode("Start", _ => Task.CompletedTask);
+        workflow.AddEdge("Start", "Finish");
+        workflow.AddTerminalNode("Finish", _ => Task.CompletedTask);
+
+        var mafWorkflow = workflow.BuildMafWorkflow();
+
+        Assert.NotNull(mafWorkflow);
+    }
+
+    [Fact]
+    public async Task MafCyclicLoopWorkflow_ExecutesIterativeCyclesUntilClean()
+    {
+        var workspace = new LoopDiagnosticWorkspace();
+        int iterationCalls = 0;
+
+        var stepExecutor = new FunctionExecutor<LoopDiagnosticWorkspace, LoopDiagnosticWorkspace>(
+            "StepAgent",
+            (ws, ctx, ct) =>
+            {
+                iterationCalls++;
+                ws.IncrementIteration();
+                if (iterationCalls >= 2)
+                {
+                    ws.ApplyCodeFix("clean code", "Fixing issues");
+                    ws.SetCleanStatus(true);
+                }
+                return ValueTask.FromResult(ws);
+            });
+
+        var evalExecutor = new FunctionExecutor<LoopDiagnosticWorkspace, LoopDiagnosticWorkspace>(
+            "StepEval",
+            (ws, ctx, ct) => ValueTask.FromResult(ws));
+
+        var endExecutor = new FunctionExecutor<LoopDiagnosticWorkspace, LoopDiagnosticWorkspace>(
+            "StepEnd",
+            (ws, ctx, ct) => ValueTask.FromResult(ws));
+
+        var builder = new WorkflowBuilder(stepExecutor);
+        builder.AddEdge(stepExecutor, evalExecutor);
+        builder.AddEdge<LoopDiagnosticWorkspace>(evalExecutor, stepExecutor, ws => ws != null && !ws.IsClean && ws.IterationCount < 5);
+        builder.AddEdge<LoopDiagnosticWorkspace>(evalExecutor, endExecutor, ws => ws != null && (ws.IsClean || ws.IterationCount >= 5));
+        builder.WithOutputFrom(endExecutor);
+
+        var loopWorkflow = builder.Build();
+        await using var run = await InProcessExecution.RunStreamingAsync(loopWorkflow, workspace);
+
+        await foreach (var evt in run.WatchStreamAsync())
+        {
+            if (evt is WorkflowOutputEvent)
+            {
+                break;
+            }
+        }
+
+        Assert.True(iterationCalls >= 2);
+        Assert.True(workspace.IsClean);
     }
 }
