@@ -1,7 +1,3 @@
-using Microsoft.Agents.AI.Workflows;
-using Microsoft.Agents.AI.Workflows.InProc;
-using AgenticWorkflowConsole.Shared;
-
 namespace AgenticWorkflowConsole;
 
 /// <summary>

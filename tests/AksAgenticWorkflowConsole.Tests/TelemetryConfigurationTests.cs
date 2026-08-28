@@ -1,7 +1,3 @@
-using System.Diagnostics;
-using AgenticWorkflowConsole.Shared;
-using Xunit;
-
 namespace AksAgenticWorkflowConsole.Tests;
 
 public class TelemetryConfigurationTests

@@ -1,8 +1,3 @@
-using System.Text;
-using AgenticWorkflowConsole.Shared;
-using Microsoft.Agents.AI;
-using Microsoft.Extensions.AI;
-
 namespace AgenticWorkflowConsole.LoopParadigm;
 
 /// <summary>
@@ -162,7 +157,7 @@ public static class LoopAgentWalkthrough
             loopEvaluator,
             new LoopAgentOptions
             {
-                MaxIterations = 5
+                MaxIterations = 10
             });
 
         ConsoleLogger.Info("[LoopAgent] Executing official Microsoft.Agents.AI.LoopAgent streaming iteration run...");

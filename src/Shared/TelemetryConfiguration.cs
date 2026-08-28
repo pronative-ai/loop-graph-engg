@@ -1,9 +1,3 @@
-using System.Diagnostics;
-using OpenTelemetry;
-using OpenTelemetry.Exporter;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-
 namespace AgenticWorkflowConsole.Shared;
 
 /// <summary>

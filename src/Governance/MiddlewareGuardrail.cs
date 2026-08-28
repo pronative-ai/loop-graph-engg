@@ -1,5 +1,3 @@
-using AgenticWorkflowConsole.Shared;
-
 namespace AgenticWorkflowConsole.Governance;
 
 // Governance walkthrough entry point: shows how to inject a human-authorization gate

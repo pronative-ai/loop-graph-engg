@@ -1,8 +1,3 @@
-using AgenticWorkflowConsole.LoopParadigm;
-using Microsoft.Agents.AI;
-using Microsoft.Extensions.AI;
-using Xunit;
-
 namespace AksAgenticWorkflowConsole.Tests;
 
 public class LoopDiagnosticTests
