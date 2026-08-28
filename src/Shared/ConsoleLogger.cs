@@ -11,7 +11,7 @@ public static class ConsoleLogger
     /// </summary>
     public static void BrandBanner()
     {
-        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.ForegroundColor = ConsoleColor.Green;
         Console.WriteLine("""
 ========================================================================================================
   ██████╗ ██████╗  ██████╗ ███╗   ██╗ █████╗ ████████╗██╗██╗   ██╗███████╗     █████╗ ██╗
