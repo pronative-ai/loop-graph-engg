@@ -39,12 +39,12 @@ The system SHALL provide a main entry point that orchestrates walkthrough execut
 
 ### Requirement: Loop paradigm demonstration
 
-The system SHALL demonstrate an AIAgent executing an internal autonomous loop across multiple iterations (minimum 2 iterations, typically 3 to 4) with live tool execution, mandatory real-time LLM-driven diagnostic feedback, progressive iteration counter incrementation, warning refinement, and final clean convergence in an interactive walkthrough, recording all tool inputs and outputs.
+The system SHALL demonstrate an autonomous agent executing iterative refinement using Microsoft Agent Framework's official `Microsoft.Agents.AI.LoopAgent` wrapped around a base agent with `LoopEvaluator` and `LoopAgentOptions`, executing live tools and real-time compiler diagnostics until completion criteria are satisfied.
 
 #### Scenario: Iterative correction loop
 
 - **WHEN** the LoopAgentWalkthrough runs with an active LLM client
-- **THEN** an `AIAgent` executes via `agent.RunStreamingAsync()` across multiple distinct loop cycles with registered live inspection, patch, and compilation verification tools until converging upon zero warnings and zero errors
+- **THEN** it executes an official `Microsoft.Agents.AI.LoopAgent` wrapped with `CompletionMarkerLoopEvaluator` or `DelegateLoopEvaluator` across multiple distinct cycles with registered live inspection, patch, and compilation verification tools until converging upon zero warnings and zero errors
 
 #### Scenario: Live tool execution
 
@@ -68,12 +68,12 @@ The system SHALL demonstrate an AIAgent executing an internal autonomous loop ac
 
 ### Requirement: Graph paradigm demonstration
 
-The system SHALL demonstrate a Workflow graph executing an end-to-end directed acyclic graph with isolated nodes representing specialized coding micro-agents in an interactive walkthrough, capturing incoming specifications and generated artifacts on node execution spans.
+The system SHALL demonstrate a Workflow graph executing an end-to-end directed acyclic graph built with Microsoft Agent Framework's `Microsoft.Agents.AI.Workflows.WorkflowBuilder` and `Workflow` primitives with specialized coding micro-agents in an interactive walkthrough.
 
 #### Scenario: DAG workflow execution
 
 - **WHEN** the GraphWorkflowWalkthrough runs with an active LLM client
-- **THEN** it executes an `AgenticWorkflow<CodingProjectState>` directed acyclic graph passing state between ArchitectAgent, CoderAgent, and ReviewerAgent nodes
+- **THEN** it executes a MAF `Workflow` built via `WorkflowBuilder` passing state between ArchitectAgent, CoderAgent, and ReviewerAgent nodes
 
 #### Scenario: Graph node payload logging
 

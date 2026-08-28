@@ -7,20 +7,20 @@
     <Nullable>enable</Nullable>
     <RootNamespace>AksAgenticWorkflowConsole</RootNamespace>
     <AssemblyName>AksAgenticWorkflowConsole</AssemblyName>
-    <NoWarn>$(NoWarn);NU1902;NU1903</NoWarn>
+    <NoWarn>$(NoWarn);NU1902;NU1903;MAAI001</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Azure.AI.OpenAI" Version="2.1.0" />
     <PackageReference Include="Azure.Identity" Version="1.12.0" />
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
-    <PackageReference Include="Microsoft.Agents.AI" Version="1.0.0" />
-    <PackageReference Include="Microsoft.Agents.AI.Workflows" Version="1.0.0-preview.251001.3" />
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.13.0" />
+    <PackageReference Include="Microsoft.Agents.AI.Workflows" Version="1.13.0" />
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.9.0" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.7.0" />
-    <PackageReference Include="OpenTelemetry" Version="1.12.0" />
-    <PackageReference Include="OpenTelemetry.Api" Version="1.12.0" />
-    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.12.0" />
+    <PackageReference Include="OpenTelemetry" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.15.3" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.0" />
   </ItemGroup>
 
   <ItemGroup>

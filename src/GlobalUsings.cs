@@ -8,6 +8,7 @@ global using Azure.Identity;
 global using OpenAI;
 global using DotNetEnv;
 global using Microsoft.Agents.AI;
+global using Microsoft.Agents.AI.Workflows;
 global using Microsoft.Extensions.AI;
 global using System.ClientModel;
 global using System.Collections.Concurrent;

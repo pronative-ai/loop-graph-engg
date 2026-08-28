@@ -1,4 +1,5 @@
 using AgenticWorkflowConsole.LoopParadigm;
+using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Xunit;
 
@@ -20,12 +21,15 @@ public class LoopDiagnosticTests
             return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, reply)));
         }
 
-        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+        public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
             IEnumerable<ChatMessage> chatMessages, 
             ChatOptions? options = null, 
-            CancellationToken cancellationToken = default)
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var userText = chatMessages.LastOrDefault()?.Text ?? string.Empty;
+            var reply = responseFactory(userText);
+            yield return new ChatResponseUpdate(ChatRole.Assistant, reply);
+            await Task.CompletedTask;
         }
 
         public object? GetService(Type serviceType, object? serviceKey = null) => null;
@@ -87,5 +91,43 @@ public class LoopDiagnosticTests
         Assert.Contains("STATUS: [PASS - VERIFIED]", cleanOutput);
         Assert.Equal(2, workspace.IterationCount);
         Assert.True(workspace.IsClean);
+    }
+
+    [Fact]
+    public async Task MafOfficialLoopAgent_IteratesUntilCompletionConditionSatisfied()
+    {
+        int invocationCount = 0;
+        var mockClient = new MockEvaluatorChatClient(prompt =>
+        {
+            invocationCount++;
+            if (invocationCount >= 2)
+            {
+                return "All fixes applied. STATUS: [PASS - VERIFIED]";
+            }
+            return "Applying patch for defect CS0103. STATUS: [IN_PROGRESS]";
+        });
+
+        var baseAgent = new ChatClientAgent(mockClient, "You are a test loop engineer.");
+        var evaluator = new CompletionMarkerLoopEvaluator("STATUS: [PASS - VERIFIED]");
+
+        var loopAgent = new LoopAgent(
+            baseAgent,
+            evaluator,
+            new LoopAgentOptions
+            {
+                MaxIterations = 4
+            });
+
+        var updates = new List<string>();
+        await foreach (var update in loopAgent.RunStreamingAsync("Start loop iteration"))
+        {
+            if (!string.IsNullOrEmpty(update.Text))
+            {
+                updates.Add(update.Text);
+            }
+        }
+
+        Assert.True(invocationCount >= 2);
+        Assert.Contains(updates, u => u.Contains("STATUS: [PASS - VERIFIED]"));
     }
 }
