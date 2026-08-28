@@ -6,9 +6,8 @@ namespace AgenticWorkflowConsole;
 // used by the Loop walkthrough to observe the real compiler state and by RunBuildVerificationAsync.
 public class TerminalExecutionTool
 {
-    // HIGHLIGHT: The external tool-invocation method. Runs a shell command as a
-    // child process, asynchronously collecting its output and exit code so the
-    // caller can react to what actually happened on the machine.
+    // HIGHLIGHT: Subprocess Execution Sandboxing - Asynchronously executes shell commands with redirected standard I/O streams
+    // Captures stdout, stderr, and exit codes without spawning an external window, safely returning results to agent tools.
     public async Task<TerminalExecutionResult> ExecuteAsync(
         string command,
         string? workingDirectory = null)
@@ -78,8 +77,7 @@ public class TerminalExecutionTool
         return result;
     }
 
-    // High-level helper: locates the nearest .csproj and runs `dotnet build`,
-    // producing a human-readable pass/fail summary for the agent to consume.
+    // HIGHLIGHT: Automated Build Verification - Invokes dotnet build to produce structured compiler diagnostics for agent reasoning
     public async Task<string> RunBuildVerificationAsync(string? targetPath = null)
     {
         var baseDir = targetPath ?? AppContext.BaseDirectory;

@@ -45,7 +45,12 @@ public static class GraphWorkflowWalkthrough
     // the shared AgenticWorkflow engine with parallel branches and a conditional gate.
     private static async Task RunAgenticGraphAsync(IChatClient baseClient)
     {
-        // Each node owns one specialist agent; its instructions pin its single role.
+        /* -------------------------------------------------------------------------
+         * STAGE 1: Multi-Agent Specialist Instantiation
+         * Defines focused single-responsibility agents for each graph node.
+         * ------------------------------------------------------------------------- */
+
+        // HIGHLIGHT: Multi-Agent Specialist Instantiation - Defines focused agent roles (Architect, Backend, Frontend, Reviewer) each with specialized system instructions
         var architect = new ChatClientAgent(
             chatClient: baseClient,
             instructions: """
@@ -84,10 +89,13 @@ public static class GraphWorkflowWalkthrough
 
         var workflow = new AgenticWorkflow<CodingProjectState>();
 
-        // The graph stores agent outputs in the shared CodingProjectState, passed
-        // node-to-node so each branch reads what its predecessor wrote.
+        /* -------------------------------------------------------------------------
+         * STAGE 2: Directed Acyclic Graph (DAG) Wiring
+         * Configures node handlers, fan-out splits, join barriers, and conditional edges.
+         * ------------------------------------------------------------------------- */
 
         // 1. Initial Node: Architect
+        // HIGHLIGHT: Initial Node Definition - Architect agent sets baseline technical requirements in shared blackboard state
         workflow.AddInitialNode("ArchitectNode", async state =>
         {
             ConsoleLogger.Info("[ArchitectNode] Generating architecture specification...");
@@ -110,10 +118,8 @@ public static class GraphWorkflowWalkthrough
         });
 
         // 2. Parallel Split: BackendCoder & FrontendCoder
-        // HIGHLIGHT: A single architect feeds two branches that run CONCURRENTLY
-        // (back end + front end). The engine fans the split out, runs both in
-        // parallel via Task.WhenAll, then rejoins them - the core Graph-paradigm
-        // contrast to Loop's single sequential agent.
+        // HIGHLIGHT: Parallel Split Routing - Concurrently invokes Backend and Frontend agent nodes via Task.WhenAll
+        // The engine fans the split out, runs both in parallel, then rejoins them - the core Graph-paradigm contrast to Loop's single sequential agent.
         workflow.AddParallelSplit("ArchitectNode", ["BackendCoderNode", "FrontendCoderNode"]);
 
         workflow.AddNode("BackendCoderNode", async state =>
@@ -151,8 +157,8 @@ public static class GraphWorkflowWalkthrough
         });
 
         // 3. Parallel Join: ReviewerNode
-        // Both branches output into the shared state, then the workflow rejoins
-        // them at a single ReviewerNode once both have completed (synchronization).
+        // HIGHLIGHT: Parallel Join Synchronization - Synchronizes concurrent branches before executing code review audit
+        // Both branches output into the shared state, then the workflow rejoins them at a single ReviewerNode once both have completed.
         workflow.AddParallelJoin(["BackendCoderNode", "FrontendCoderNode"], "ReviewerNode");
 
         workflow.AddNode("ReviewerNode", async state =>
@@ -177,8 +183,8 @@ public static class GraphWorkflowWalkthrough
         });
 
         // 4. Conditional Edge: to DeploymentNode
-        // Approval gate: only the ReviewerNode's IsApproved=true lets the graph
-        // advance into Deployment; a rejected solution halts before release.
+        // HIGHLIGHT: Conditional Edge Gate - Enforces quality gate ensuring release deployment only executes upon reviewer approval
+        // Approval gate: only the ReviewerNode's IsApproved=true lets the graph advance into Deployment; a rejected solution halts before release.
         workflow.AddConditionalEdge("ReviewerNode", "DeploymentNode", state => state.IsApproved);
 
         // 5. Terminal Node: Deployment

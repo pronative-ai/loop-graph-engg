@@ -41,9 +41,8 @@ public class WorkflowContext<TState>
     public string SessionId { get; set; } = string.Empty;
 }
 
-// The graph engine itself: owns node/edge/middleware registries and the execution
-// loop that walks the graph, fans out parallel branches, respects conditional
-// edges, and applies middleware around every node hop.
+// HIGHLIGHT: Graph Engine Core - Lightweight async DAG runner supporting parallel fan-out, fan-in joins, conditional gating, and middleware pipelines
+// The engine owns node/edge/middleware registries and orchestrates asynchronous workflow traversal.
 public class AgenticWorkflow<TState>
 {
     private readonly Dictionary<string, WorkflowNode<TState>> _nodes = new();
@@ -320,6 +319,7 @@ public class AgenticWorkflow<TState>
         }
     }
 
+    // HIGHLIGHT: Onion-Skin Middleware Pipeline - Recursively wraps node actions with telemetry, security, and human-in-the-loop gates
     private async Task ExecuteMiddlewarePipeline(WorkflowContext<TState> context, Func<Task> action)
     {
         var index = 0;

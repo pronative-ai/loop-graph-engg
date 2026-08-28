@@ -17,10 +17,12 @@ public static class MiddlewareGuardrail
 
         var workflow = new AgenticWorkflow<CodingProjectState>();
 
-        // Register the Governance Interceptor Middleware: this is the key guardrail.
-        // It wraps every node hop, but only pauses execution when the target is the
-        // deployment node - so ordinary nodes run through unobstructed while the most
-        // dangerous transition gets a human checkpoint.
+        /* -------------------------------------------------------------------------
+         * STAGE 1: Governance Interceptor Registration
+         * Injects a safety guardrail into the workflow pipeline that intercepts transitions.
+         * ------------------------------------------------------------------------- */
+
+        // HIGHLIGHT: Governance Interceptor Registration - Injects a security checkpoint middleware into the AgenticWorkflow pipeline
         workflow.UseMiddleware(async (context, next) =>
         {
             if (string.Equals(context.NextNode, "DeploymentNode", StringComparison.OrdinalIgnoreCase))
@@ -29,11 +31,8 @@ public static class MiddlewareGuardrail
                 guardrailActivity?.SetTag("guardrail.session_id", context.SessionId);
                 guardrailActivity?.SetTag("guardrail.target_node", context.NextNode);
 
-                // HIGHLIGHT: The human-checkpoint gate for production deployment.
-                // Middleware intercepts the transition, prompts the operator for
-                // approval, and either allows the pipeline to proceed (pass) or
-                // throws to halt the workflow (fail). This is the pass/fail path
-                // to walk through live: show that "deny" blocks deployment.
+                // HIGHLIGHT: Human-in-the-Loop Approval Gate - Intercepts production release transition, prompts human operator, and records decision in checkpoint store
+                // Middleware pauses execution before the dangerous DeploymentNode, requesting explicit human sign-off.
                 ConsoleLogger.BlankLine();
                 ConsoleLogger.Info("[Middleware] Guardrail triggered: Intercepting transition to 'DeploymentNode'");
                 ConsoleLogger.SecurityWarning("CRITICAL: PRODUCTION DEPLOYMENT AUTHORIZATION REQUIRED");
@@ -46,6 +45,7 @@ public static class MiddlewareGuardrail
 
                 if (string.Equals(input?.Trim(), "deny", StringComparison.OrdinalIgnoreCase))
                 {
+                    // HIGHLIGHT: Policy Denial Enforcement - Blocks deployment and halts workflow with UnauthorizedAccessException when operator denies authorization
                     guardrailActivity?.SetTag("guardrail.operator_action", "deny");
                     guardrailActivity?.SetTag("guardrail.is_approved", false);
                     guardrailActivity?.SetTag("guardrail.reason", "Operator checkpoint denied transition to DeploymentNode.");

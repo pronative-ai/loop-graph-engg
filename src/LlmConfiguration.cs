@@ -35,6 +35,7 @@ public static class LlmConfiguration
         return Environment.GetEnvironmentVariable("MODEL_NAME") ?? "gpt-4o";
     }
 
+    // HIGHLIGHT: Chat Client Factory - Adapts OpenAI SDK client to Microsoft Agent Framework (MAF) IChatClient and attaches OpenTelemetry
     public static IChatClient CreateChatClient(string? modelName = null)
     {
         var gatewayUrl = LoadGatewayUrl().TrimEnd('/');
@@ -57,6 +58,7 @@ public static class LlmConfiguration
         var openAiClient = new OpenAIClient(credential, clientOptions);
         var chatClient = openAiClient.GetChatClient(model);
 
+        // HIGHLIGHT: Pipeline Middleware Builder - Enriches IChatClient with automated OpenTelemetry instrumentation for token & latency tracking
         return chatClient.AsIChatClient()
             .AsBuilder()
             .UseOpenTelemetry(sourceName: "Microsoft.Extensions.AI")

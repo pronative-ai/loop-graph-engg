@@ -23,11 +23,12 @@ internal static class Program
         // Load .env values first
         Env.TraversePath().Load();
 
-        // Initialize OpenTelemetry distributed tracing with Langfuse export
+        // HIGHLIGHT: Runtime Initialization & OpenTelemetry Setup - Configures Langfuse export and distributed tracing before agent invocation
         using var tracerProvider = TelemetryConfiguration.InitializeTracerProvider();
         var otlpEndpoint = TelemetryConfiguration.LoadOtlpTraceEndpoint();
         ConsoleLogger.Success($"[MONITORING] OpenTelemetry trace export target -> {otlpEndpoint}");
 
+        // HIGHLIGHT: LLM Gateway Connection - Initializes Microsoft Agent Framework IChatClient with Azure/OpenAI endpoint
         // Gateway setup is best-effort: if credentials are missing, we log a note and proceed
         try
         {
@@ -53,9 +54,8 @@ internal static class Program
             ConsoleLogger.BlankLine();
         }
 
-        // HIGHLIGHT: The presentation start anchor. This interactive dispatch
-        // loop lets the audience pick the Live Loop, Graph, or Governance walkthrough.
-        // Each walkthrough illustrates a different agent-orchestration paradigm.
+        // HIGHLIGHT: Paradigm Dispatcher Menu - Main presentation hub switching between Loop, Graph, and Governance paradigms
+        // Each option demonstrates a distinct agentic architecture pattern using Microsoft Agent Framework.
         while (true)
         {
             ConsoleLogger.BlankLine();

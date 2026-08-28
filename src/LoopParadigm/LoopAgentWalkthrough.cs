@@ -29,7 +29,13 @@ public static class LoopAgentWalkthrough
             return;
         }
 
-        // Register typed diagnostic, inspection, and patch tools with AIFunctionFactory
+        /* -------------------------------------------------------------------------
+         * STAGE 1: Tool Registration with AIFunctionFactory
+         * Converts local C# workspace diagnostics and file operations into typed
+         * LLM tools equipped with OpenTelemetry tracing tags.
+         * ------------------------------------------------------------------------- */
+
+        // HIGHLIGHT: Tool Registration with AIFunctionFactory - Exposes deterministic workspace inspection and compilation functions as LLM tools
         var inspectTool = AIFunctionFactory.Create(
             () =>
             {
@@ -106,6 +112,12 @@ public static class LoopAgentWalkthrough
             "CompileAndVerify",
             "Compiles and validates the C# workspace using the real-time .NET compiler and static analysis engine.");
 
+        /* -------------------------------------------------------------------------
+         * STAGE 2: ChatClientAgent Instantiation
+         * Defines the autonomous agent persona, operational instructions, and tool bindings.
+         * ------------------------------------------------------------------------- */
+
+        // HIGHLIGHT: Autonomous ChatClientAgent Definition - Instantiates single-agent loop engineer armed with tools and diagnostic protocol
         var agent = new ChatClientAgent(
             chatClient: baseClient,
             instructions: """
@@ -129,6 +141,13 @@ public static class LoopAgentWalkthrough
         ConsoleLogger.Info("[LoopDevAgent] Starting autonomous correction loop with live tool invocation...");
         ConsoleLogger.BlankLine();
 
+        /* -------------------------------------------------------------------------
+         * STAGE 3: Autonomous Feedback Iteration Loop
+         * Repeatedly invokes the agent, streaming its reasoning and tool executions
+         * until the workspace signals clean compilation or max iterations reached.
+         * ------------------------------------------------------------------------- */
+
+        // HIGHLIGHT: Autonomous Feedback Iteration Loop - Streams reasoning and tool execution iteratively until 0 errors / 0 warnings convergence
         try
         {
             const int maxIterations = 5;

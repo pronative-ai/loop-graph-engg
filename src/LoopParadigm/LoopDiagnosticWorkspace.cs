@@ -11,6 +11,7 @@ public class LoopDiagnosticWorkspace
     public int IterationCount { get; private set; } = 0;
     public string TargetFileName { get; } = "OrderDiscountEngine.cs";
 
+    // HIGHLIGHT: Simulated Diagnostic Workspace - In-memory sandbox containing synthetic defects for the loop agent to discover and repair
     private string _sourceCode = """
         namespace ECommerce.Pricing;
 
@@ -56,6 +57,7 @@ public class LoopDiagnosticWorkspace
     /// <summary>
     /// Applies a code patch or replacement to the workspace.
     /// </summary>
+    // HIGHLIGHT: Patch Application - Mutates sandbox code state and invalidates cleanliness status, forcing re-verification
     public string ApplyCodeFix(string updatedCode, string explanation)
     {
         _sourceCode = updatedCode;
@@ -66,6 +68,7 @@ public class LoopDiagnosticWorkspace
     /// <summary>
     /// Compiles and verifies the current workspace code using real-time LLM analysis.
     /// </summary>
+    // HIGHLIGHT: Live LLM Verification Engine - Evaluates updated C# code against compiler rules, nullable analysis, and unit tests
     public async Task<string> CompileAndVerifyAsync(IChatClient chatClient)
     {
         ArgumentNullException.ThrowIfNull(chatClient);
